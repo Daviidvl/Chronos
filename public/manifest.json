@@ -1,43 +1,14 @@
 {
-  "name": "Chronos — Sistema de Evolução Pessoal",
+  "name": "Chronos",
   "short_name": "Chronos",
-  "description": "Planeje seus dias, desenvolva hábitos e acompanhe sua evolução.",
-  "start_url": "/today",
+  "description": "Organize seu dia",
+  "start_url": "/hoje",
   "display": "standalone",
-  "background_color": "#050506",
-  "theme_color": "#050506",
-  "orientation": "portrait-primary",
+  "background_color": "#F5F7FA",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait",
   "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    }
-  ],
-  "categories": ["productivity", "lifestyle"],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Hoje",
-      "url": "/today",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Hábitos",
-      "url": "/habits",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Diário",
-      "url": "/journal",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

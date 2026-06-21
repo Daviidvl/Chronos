@@ -3,25 +3,22 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Chronos',
-  description: 'Sistema de evolução pessoal.',
+  description: 'Organize seu dia',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Chronos' },
-  icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Chronos' },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#09090B',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#6E5CF6',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="h-full">
-      <body className="h-full">
-        {children}
-      </body>
+    <html lang="pt-BR">
+      <body>{children}</body>
     </html>
   )
 }

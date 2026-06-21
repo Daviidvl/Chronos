@@ -1,266 +1,371 @@
 'use client'
 
+import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
-import { useHabitsStore } from '@/lib/store/useHabitsStore'
-import { CATEGORY_COLORS, CATEGORY_LABELS, Category } from '@/types'
-import { todayISO, last7Days, computeHabitStats } from '@/lib/utils'
-import { Check, Plus, ChevronDown, ChevronUp, Flame, TrendingUp, Trophy, X } from 'lucide-react'
-import { subDays } from 'date-fns'
+import { Plus, X, Check, Flame, Repeat2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { todayISO, last7Days } from '@/lib/utils'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import type { Habit, HabitLog } from '@/types'
 
-function HabitCard({ habit }: { habit: ReturnType<typeof useHabitsStore.getState>['habits'][0] }) {
-  const { logs, getLogForDate, toggleHabit, deleteHabit } = useHabitsStore()
-  const [expanded, setExpanded] = useState(false)
-  const today = todayISO()
-  const days = last7Days()
-  const stats = computeHabitStats(logs, habit.id)
-  const done = getLogForDate(habit.id, today)?.completed ?? false
+const PALETTE = [
+  '#6E5CF6', '#2CC08C', '#F79009', '#F04438',
+  '#8B5CF6', '#EC4899', '#0EA5E9', '#14B8A6',
+]
+
+/* ── Habit Card ───────────────────────────────────────── */
+function HabitCard({
+  habit, logs, onToggle, onDelete,
+}: {
+  habit: Habit
+  logs: HabitLog[]
+  onToggle: (habitId: string, date: string, done: boolean) => void
+  onDelete: (id: string) => void
+}) {
+  const today    = todayISO()
+  const days     = last7Days()
+  const todayLog = logs.find(l => l.habit_id === habit.id && l.date === today)
+  const done     = todayLog?.completed ?? false
+
+  const streak = (() => {
+    let s = 0
+    for (let i = days.length - 1; i >= 0; i--) {
+      if (logs.find(l => l.habit_id === habit.id && l.date === days[i])?.completed) s++
+      else break
+    }
+    return s
+  })()
 
   return (
     <motion.div
       layout
-      className="rounded-[20px] overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="card"
+      style={{ padding: '16px 18px' }}
     >
-      {/* Main row */}
-      <div className="flex items-center gap-4 px-5 py-4">
-        <div
-          className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[13px] font-semibold flex-shrink-0"
-          style={{ background: `${habit.color}18`, color: habit.color }}
-        >
-          {habit.name.slice(0, 2).toUpperCase()}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`text-[14px] font-medium ${done ? 'text-[var(--text-3)] line-through' : 'text-[var(--text-1)]'}`}>
+        {/* Left color bar */}
+        <div style={{ width: 3, height: 44, borderRadius: 99, background: habit.color, flexShrink: 0 }} />
+
+        {/* Content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Name row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#121826' }}>
               {habit.name}
             </span>
-            {stats.currentStreak >= 3 && (
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.12)' }}>
-                <Flame size={10} className="text-[var(--warning)]" />
-                <span className="text-[10px] font-medium text-[var(--warning)]">{stats.currentStreak}</span>
-              </div>
+            {streak >= 2 && (
+              <span
+                className="badge-pill"
+                style={{ background: '#FEF3C7', color: '#D97706' }}
+              >
+                <Flame size={9} />
+                {streak}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            {days.map((d, i) => {
-              const dayDone = getLogForDate(habit.id, d)?.completed ?? false
+
+          {/* 7-day dots */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+            {days.map(d => {
+              const filled  = logs.find(l => l.habit_id === habit.id && l.date === d)?.completed ?? false
               const isToday = d === today
               return (
-                <div
-                  key={d}
-                  className="w-4 h-4 rounded-full transition-all"
-                  style={{
-                    background: dayDone ? habit.color : 'rgba(255,255,255,0.06)',
-                    opacity: isToday ? 1 : 0.6,
-                    transform: isToday ? 'scale(1.15)' : 'scale(1)',
-                  }}
-                />
+                <div key={d} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div
+                    className="habit-dot"
+                    style={{
+                      width:      isToday ? 14 : 10,
+                      height:     isToday ? 14 : 10,
+                      background: filled ? habit.color : isToday ? habit.color + '28' : 'var(--bdr-2)',
+                    }}
+                  />
+                  {isToday && (
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: habit.color + '70' }} />
+                  )}
+                </div>
               )
             })}
           </div>
         </div>
 
+        {/* Check button */}
         <button
-          onClick={() => toggleHabit(habit.id)}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+          onClick={() => onToggle(habit.id, today, !done)}
           style={{
+            width: 40,
+            height: 40,
+            borderRadius: 'var(--r-xs)',
+            border: `2px solid ${done ? habit.color : 'var(--bdr-2)'}`,
             background: done ? habit.color : 'transparent',
-            border: `2px solid ${done ? habit.color : 'rgba(255,255,255,0.14)'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'all 0.18s ease',
           }}
         >
           <AnimatePresence>
             {done && (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}>
-                <Check size={15} strokeWidth={3} className="text-white" />
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ type: 'spring', stiffness: 600, damping: 30 }}
+              >
+                <Check size={15} strokeWidth={3} color="#fff" />
               </motion.div>
             )}
           </AnimatePresence>
         </button>
 
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="text-[var(--text-4)] hover:text-[var(--text-3)] transition-colors ml-1"
-        >
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {/* Delete */}
+        <button onClick={() => onDelete(habit.id)} className="btn-icon danger">
+          <X size={14} />
         </button>
       </div>
-
-      {/* Expanded stats */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-4 pt-0">
-              <div className="h-px mb-4" style={{ background: 'var(--border)' }} />
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {[
-                  { icon: Flame,      value: stats.currentStreak, label: 'Sequência',   color: 'var(--warning)' },
-                  { icon: Trophy,     value: stats.bestStreak,    label: 'Melhor',       color: 'var(--accent)' },
-                  { icon: TrendingUp, value: `${stats.completionRate}%`, label: '30 dias', color: 'var(--positive)' },
-                ].map(s => (
-                  <div key={s.label} className="rounded-[14px] px-3 py-3 text-center" style={{ background: 'var(--surface-hover)' }}>
-                    <s.icon size={14} className="mx-auto mb-1" style={{ color: s.color }} />
-                    <div className="text-[16px] font-semibold text-[var(--text-1)]">{s.value}</div>
-                    <div className="text-[11px] text-[var(--text-3)]">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => deleteHabit(habit.id)}
-                className="text-[12px] text-[var(--text-4)] hover:text-[var(--danger)] transition-colors"
-              >
-                Remover hábito
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   )
 }
 
-function AddHabitSheet({ onClose }: { onClose: () => void }) {
-  const { addHabit } = useHabitsStore()
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<Category>('pessoal')
-  const categories = Object.entries(CATEGORY_LABELS) as [Category, string][]
+/* ── Add Sheet ────────────────────────────────────────── */
+function AddSheet({ onClose, onAdd, userId }: {
+  onClose: () => void
+  onAdd: (h: Habit) => void
+  userId: string
+}) {
+  const [name, setName]   = useState('')
+  const [color, setColor] = useState(PALETTE[0])
+  const [saving, setSaving] = useState(false)
 
-  const handleAdd = () => {
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!name.trim()) return
-    addHabit({
-      name: name.trim(),
-      category,
-      color: CATEGORY_COLORS[category],
-      frequency: 'daily',
-      targetDays: 7,
-    })
-    onClose()
+    setSaving(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('habits')
+      .insert({ user_id: userId, name: name.trim(), color, active: true })
+      .select()
+      .single()
+    if (!error && data) { onAdd(data as Habit); onClose() }
+    setSaving(false)
   }
 
   return (
     <>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-40"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(18,24,38,0.32)', backdropFilter: 'blur(8px)' }}
         onClick={onClose}
       />
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] p-6 pb-10"
-        style={{ background: 'var(--surface-high)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-float)' }}
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 380, damping: 42 }}
+        style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+          background: '#FFFFFF',
+          borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
+          boxShadow: 'var(--sh-lg)',
+        }}
+        className="sheet-body"
       >
-        <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ background: 'var(--border-focus)' }} />
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-[17px] font-semibold text-[var(--text-1)]">Novo Hábito</h3>
-          <button onClick={onClose} className="text-[var(--text-3)] hover:text-[var(--text-2)]"><X size={18} /></button>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
+            Novo hábito
+          </span>
+          <button onClick={onClose} className="btn-icon"><X size={16} /></button>
         </div>
 
-        <input
-          autoFocus
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Nome do hábito..."
-          className="w-full px-4 py-3 rounded-[14px] text-[15px] mb-4 outline-none text-[var(--text-1)] placeholder:text-[var(--text-4)]"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-        />
+        <form onSubmit={handleAdd}>
+          <div style={{ marginBottom: 20 }}>
+            <input
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Ex: Leitura, Treino, Meditação..."
+              className="field"
+            />
+          </div>
 
-        <p className="text-[11px] text-[var(--text-3)] uppercase tracking-widest mb-3">Categoria</p>
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          {categories.map(([key, label]) => {
-            const color = CATEGORY_COLORS[key]
-            const sel = category === key
-            return (
-              <button
-                key={key}
-                onClick={() => setCategory(key)}
-                className="flex flex-col items-center gap-1.5 py-2.5 rounded-[12px] transition-all text-[11px]"
-                style={{
-                  background: sel ? `${color}18` : 'var(--surface)',
-                  border: `1px solid ${sel ? color + '50' : 'var(--border)'}`,
-                  color: sel ? color : 'var(--text-3)',
-                }}
-              >
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                {label}
-              </button>
-            )
-          })}
-        </div>
+          <div style={{ marginBottom: 28 }}>
+            <label className="form-label">Cor</label>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+              {PALETTE.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`color-swatch${color === c ? ' color-swatch--active' : ''}`}
+                  style={{ background: c, outlineColor: c }}
+                />
+              ))}
+            </div>
+          </div>
 
-        <button
-          onClick={handleAdd}
-          disabled={!name.trim()}
-          className="w-full py-3.5 rounded-[14px] text-[15px] font-semibold text-white transition-opacity disabled:opacity-40"
-          style={{ background: 'var(--accent)' }}
-        >
-          Criar Hábito
-        </button>
+          <button type="submit" disabled={!name.trim() || saving} className="btn btn-brand">
+            {saving ? 'A guardar...' : 'Criar hábito'}
+          </button>
+        </form>
       </motion.div>
     </>
   )
 }
 
+/* ── Skeleton ─────────────────────────────────────────── */
+function HabitSkeleton() {
+  return (
+    <div className="card" style={{ padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="skel" style={{ width: 3, height: 44, borderRadius: 99, flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="skel" style={{ height: 14, width: '45%', marginBottom: 12 }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[1,2,3,4,5,6,7].map(i => (
+              <div key={i} className="skel" style={{ width: 10, height: 10, borderRadius: 4 }} />
+            ))}
+          </div>
+        </div>
+        <div className="skel" style={{ width: 40, height: 40, borderRadius: 'var(--r-xs)', flexShrink: 0 }} />
+      </div>
+    </div>
+  )
+}
+
+/* ── Page ─────────────────────────────────────────────── */
 export default function HabitosPage() {
-  const { getActiveHabits, getLogForDate, logs } = useHabitsStore()
+  const [habits, setHabits]   = useState<Habit[]>([])
+  const [logs, setLogs]       = useState<HabitLog[]>([])
+  const [userId, setUserId]   = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const today = todayISO()
-  const habits = getActiveHabits()
-  const done = habits.filter(h => getLogForDate(h.id, today)?.completed).length
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setUserId(user.id)
+
+    const days = last7Days()
+    const [{ data: habitsData }, { data: logsData }] = await Promise.all([
+      supabase.from('habits').select('*').eq('user_id', user.id).eq('active', true).order('created_at'),
+      supabase.from('habit_logs').select('*').eq('user_id', user.id).in('date', days),
+    ])
+    setHabits((habitsData as Habit[]) ?? [])
+    setLogs((logsData as HabitLog[]) ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const toggleHabit = async (habitId: string, date: string, done: boolean) => {
+    setLogs(ls => {
+      const ex = ls.find(l => l.habit_id === habitId && l.date === date)
+      if (ex) return ls.map(l => l.habit_id === habitId && l.date === date ? { ...l, completed: done } : l)
+      return [...ls, { id: crypto.randomUUID(), habit_id: habitId, user_id: userId, date, completed: done }]
+    })
+    const supabase = createClient()
+    await supabase.from('habit_logs').upsert(
+      { habit_id: habitId, user_id: userId, date, completed: done },
+      { onConflict: 'habit_id,date' }
+    )
+  }
+
+  const deleteHabit = async (id: string) => {
+    setHabits(hs => hs.filter(h => h.id !== id))
+    const supabase = createClient()
+    await supabase.from('habits').update({ active: false }).eq('id', id)
+  }
+
+  const today     = todayISO()
+  const doneToday = habits.filter(h => logs.find(l => l.habit_id === h.id && l.date === today)?.completed).length
 
   return (
-    <div className="max-w-xl mx-auto px-5 pt-8 pb-6">
-      <motion.header initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between mb-8">
+    <div className="page">
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40 }}
+      >
         <div>
-          <h1 className="text-[32px] font-semibold text-[var(--text-1)] tracking-tight leading-none">Hábitos</h1>
-          <p className="text-[14px] text-[var(--text-3)] mt-2">
-            {done}/{habits.length} concluídos hoje
-          </p>
+          <h1 className="t-display">Hábitos</h1>
+          {habits.length > 0 && (
+            <p style={{ fontSize: 14, color: '#9BA5B4', marginTop: 6, fontWeight: 400 }}>
+              {doneToday} de {habits.length} hoje
+            </p>
+          )}
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[13px] font-medium text-white transition-opacity hover:opacity-85"
-          style={{ background: 'var(--accent)', marginTop: 4 }}
+          className="btn btn-brand"
+          style={{ width: 'auto', minHeight: 44, padding: '0 18px', fontSize: 14 }}
         >
-          <Plus size={15} /> Novo
+          <Plus size={15} strokeWidth={2.5} />
+          Novo
         </button>
       </motion.header>
 
-      {habits.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-          <p className="text-[14px] text-[var(--text-3)]">Nenhum hábito ainda.</p>
-          <p className="text-[13px] text-[var(--text-4)] mt-1">Crie seu primeiro hábito para começar.</p>
-        </motion.div>
-      ) : (
-        <div className="space-y-3">
-          {habits.map((h, i) => (
-            <motion.div
-              key={h.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07 }}
+      {/* Day labels */}
+      {!loading && habits.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, paddingRight: 72 }}>
+          {last7Days().map(d => (
+            <div
+              key={d}
+              style={{
+                width: d === today ? 14 : 10,
+                marginRight: d === today ? 12 : 6,
+                textAlign: 'center',
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#C2CAD8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
             >
-              <HabitCard habit={h} />
-            </motion.div>
+              {format(parseISO(d), 'EEE', { locale: ptBR }).slice(0, 1)}
+            </div>
           ))}
         </div>
       )}
 
-      <AnimatePresence>{showAdd && <AddHabitSheet onClose={() => setShowAdd(false)} />}</AnimatePresence>
+      {/* List */}
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[1, 2, 3].map(i => <HabitSkeleton key={i} />)}
+        </div>
+      ) : habits.length === 0 ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty">
+          <div className="empty-icon" style={{ background: '#D3F9EE', color: '#2CC08C' }}>
+            <Repeat2 size={24} />
+          </div>
+          <p className="empty-title">Nenhum hábito ainda</p>
+          <p className="empty-sub">Cria o teu primeiro hábito</p>
+        </motion.div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <AnimatePresence mode="popLayout">
+            {habits.map(h => (
+              <HabitCard key={h.id} habit={h} logs={logs} onToggle={toggleHabit} onDelete={deleteHabit} />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showAdd && (
+          <AddSheet
+            onClose={() => setShowAdd(false)}
+            onAdd={h => setHabits(hs => [...hs, h])}
+            userId={userId}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
