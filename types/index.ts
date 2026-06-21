@@ -1,22 +1,47 @@
-export type HabitCategory =
-  | 'health'
-  | 'fitness'
-  | 'mind'
-  | 'productivity'
-  | 'social'
-  | 'finance'
-  | 'spirituality'
+export type Priority = 'low' | 'medium' | 'high' | 'urgent'
+export type Category = 'saude' | 'trabalho' | 'estudos' | 'pessoal' | 'financas' | 'relacionamentos' | 'lazer'
 
-export type HabitFrequency = 'daily' | 'weekly' | 'monthly'
+export const CATEGORY_COLORS: Record<Category, string> = {
+  saude:          '#22C55E',
+  trabalho:       '#6366F1',
+  estudos:        '#3B82F6',
+  pessoal:        '#EC4899',
+  financas:       '#F59E0B',
+  relacionamentos:'#8B5CF6',
+  lazer:          '#14B8A6',
+}
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  saude:          'Saúde',
+  trabalho:       'Trabalho',
+  estudos:        'Estudos',
+  pessoal:        'Pessoal',
+  financas:       'Finanças',
+  relacionamentos:'Relacionamentos',
+  lazer:          'Lazer',
+}
+
+export const PRIORITY_COLORS: Record<Priority, string> = {
+  low:    'rgba(255,255,255,0.30)',
+  medium: '#6366F1',
+  high:   '#F59E0B',
+  urgent: '#EF4444',
+}
+
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  low:    'Baixa',
+  medium: 'Média',
+  high:   'Alta',
+  urgent: 'Urgente',
+}
 
 export interface Habit {
   id: string
   name: string
-  category: HabitCategory
-  frequency: HabitFrequency
-  targetPerWeek: number
-  icon: string
+  category: Category
   color: string
+  frequency: 'daily' | 'weekly'
+  targetDays: number
   createdAt: string
   archived: boolean
 }
@@ -24,37 +49,24 @@ export interface Habit {
 export interface HabitLog {
   id: string
   habitId: string
-  date: string // ISO date YYYY-MM-DD
+  date: string
   completed: boolean
-  skipped: boolean
   note?: string
 }
 
 export interface HabitStats {
-  habitId: string
   currentStreak: number
   bestStreak: number
   completionRate: number
   totalCompleted: number
-  weeklyCompleted: number
 }
-
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
-
-export type TaskCategory =
-  | 'health'
-  | 'work'
-  | 'study'
-  | 'finance'
-  | 'personal'
-  | 'other'
 
 export interface Task {
   id: string
   title: string
   description?: string
-  priority: TaskPriority
-  category: TaskCategory
+  priority: Priority
+  category: Category
   dueDate?: string
   completed: boolean
   completedAt?: string
@@ -63,166 +75,38 @@ export interface Task {
   createdAt: string
 }
 
-export type GoalCategory =
-  | 'health'
-  | 'work'
-  | 'study'
-  | 'finance'
-  | 'relationships'
-  | 'spirituality'
-
-export type GoalPriority = 'low' | 'medium' | 'high'
-
 export interface GoalMilestone {
   id: string
-  goalId: string
   title: string
   completed: boolean
-  order: number
 }
 
 export interface Goal {
   id: string
   title: string
   description?: string
-  category: GoalCategory
-  priority: GoalPriority
+  category: Category
+  priority: Priority
   deadline?: string
   progress: number
-  habitIds: string[]
   milestones: GoalMilestone[]
-  notes?: string
-  createdAt: string
   archived: boolean
+  createdAt: string
 }
-
-export type EventCategory =
-  | 'work'
-  | 'health'
-  | 'study'
-  | 'leisure'
-  | 'personal'
 
 export interface CalendarEvent {
   id: string
   title: string
-  description?: string
-  startTime: string // HH:MM
-  endTime?: string  // HH:MM
-  date: string      // YYYY-MM-DD
-  category: EventCategory
-  color?: string
+  date: string
+  startTime: string
+  endTime?: string
+  category: Category
   allDay: boolean
-}
-
-export type JournalMood = 'great' | 'good' | 'okay' | 'bad' | 'terrible'
-
-export interface JournalEntry {
-  id: string
-  date: string // YYYY-MM-DD
-  content: string
-  mood?: JournalMood
-  gratitude?: string
-  reflection?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface Achievement {
-  id: string
-  name: string
-  description: string
-  icon: string
-  xpReward: number
-  unlocked: boolean
-  unlockedAt?: string
+  description?: string
 }
 
 export interface UserProfile {
   id: string
   name: string
   avatar?: string
-  level: number
-  xp: number
-  xpToNextLevel: number
-  achievements: string[]
-  createdAt: string
 }
-
-export interface DayStats {
-  date: string
-  tasksCompleted: number
-  tasksTotal: number
-  habitsCompleted: number
-  habitsTotal: number
-  productiveHours: number
-  journalWritten: boolean
-}
-
-export type ViewMode = 'day' | 'week' | 'month'
-
-export interface InsightItem {
-  id: string
-  title: string
-  description: string
-  type: 'habit' | 'productivity' | 'goal' | 'streak'
-  value?: number | string
-  icon: string
-}
-
-export const CATEGORY_COLORS: Record<string, string> = {
-  health: '#10B981',
-  fitness: '#F59E0B',
-  mind: '#8B5CF6',
-  productivity: '#5E6AD2',
-  work: '#5E6AD2',
-  social: '#EC4899',
-  finance: '#06B6D4',
-  spirituality: '#A78BFA',
-  study: '#F59E0B',
-  relationships: '#EC4899',
-  personal: '#8A8F98',
-  leisure: '#10B981',
-  other: '#8A8F98',
-}
-
-export const CATEGORY_ICONS: Record<string, string> = {
-  health: '🏥',
-  fitness: '💪',
-  mind: '🧠',
-  productivity: '⚡',
-  work: '💼',
-  social: '👥',
-  finance: '💰',
-  spirituality: '🙏',
-  study: '📚',
-  relationships: '❤️',
-  personal: '✨',
-  leisure: '🎮',
-  other: '📌',
-}
-
-export const XP_REWARDS = {
-  completeTask: 10,
-  completeHabit: 15,
-  completeMilestone: 25,
-  completeGoal: 100,
-  writeJournal: 20,
-  streak7: 50,
-  streak30: 200,
-  streak100: 500,
-  perfectDay: 75,
-}
-
-export const LEVELS = [
-  { level: 1, xpRequired: 0, title: 'Iniciante' },
-  { level: 2, xpRequired: 100, title: 'Aprendiz' },
-  { level: 3, xpRequired: 250, title: 'Praticante' },
-  { level: 4, xpRequired: 500, title: 'Consistente' },
-  { level: 5, xpRequired: 1000, title: 'Dedicado' },
-  { level: 6, xpRequired: 2000, title: 'Focado' },
-  { level: 7, xpRequired: 3500, title: 'Disciplinado' },
-  { level: 8, xpRequired: 5000, title: 'Mestre' },
-  { level: 9, xpRequired: 7500, title: 'Elite' },
-  { level: 10, xpRequired: 10000, title: 'Lendário' },
-]

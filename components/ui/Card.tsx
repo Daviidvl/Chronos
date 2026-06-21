@@ -1,50 +1,39 @@
+'use client'
+
 import { cn } from '@/lib/utils'
+import { motion, HTMLMotionProps } from 'framer-motion'
+import { forwardRef } from 'react'
 
-interface CardProps {
-  children: React.ReactNode
-  className?: string
-  onClick?: () => void
+interface CardProps extends HTMLMotionProps<'div'> {
+  variant?: 'default' | 'elevated' | 'ghost'
   hover?: boolean
-  style?: React.CSSProperties
+  padding?: 'none' | 'sm' | 'md' | 'lg'
 }
 
-export function Card({ children, className, onClick, hover, style }: CardProps) {
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        'rounded-xl',
-        hover && 'cursor-pointer transition-all duration-150 hover:border-[var(--border-strong)]',
-        onClick && 'cursor-pointer',
-        className
-      )}
-      style={{
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border)',
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn('flex items-center justify-between px-4 pt-4 pb-3', className)}>
-      {children}
-    </div>
-  )
-}
-
-export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <h3 className={cn('text-sm font-semibold text-[var(--text-primary)] tracking-[-0.01em]', className)}>
-      {children}
-    </h3>
-  )
-}
-
-export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('px-4 pb-4', className)}>{children}</div>
-}
+export const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant = 'default', hover = false, padding = 'md', children, ...props }, ref) => {
+    const base = 'rounded-[24px] transition-colors duration-150'
+    const variants = {
+      default:  'bg-[var(--surface)] border border-[var(--border)]',
+      elevated: 'bg-[var(--surface-high)] border border-[var(--border)]',
+      ghost:    'bg-transparent border border-[var(--border)]',
+    }
+    const paddings = {
+      none: '',
+      sm:   'p-4',
+      md:   'p-5',
+      lg:   'p-6',
+    }
+    return (
+      <motion.div
+        ref={ref}
+        className={cn(base, variants[variant], paddings[padding], hover && 'hover:bg-[var(--surface-hover)] cursor-pointer', className)}
+        style={{ boxShadow: 'var(--shadow-card)', ...props.style }}
+        {...props}
+      >
+        {children}
+      </motion.div>
+    )
+  }
+)
+Card.displayName = 'Card'

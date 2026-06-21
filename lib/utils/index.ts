@@ -1,198 +1,121 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, isToday, isYesterday, parseISO, differenceInDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns'
+import { format, parseISO, differenceInDays, eachDayOfInterval, subDays, startOfWeek, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { LEVELS, XP_REWARDS } from '@/types'
+import { HabitLog, HabitStats } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: string | Date, fmt = 'dd/MM/yyyy') {
-  const d = typeof date === 'string' ? parseISO(date) : date
-  return format(d, fmt, { locale: ptBR })
+export function generateId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-export function formatTime(time: string) {
-  return time.slice(0, 5)
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
-export function todayISO() {
-  return format(new Date(), 'yyyy-MM-dd')
+export function formatDate(dateStr: string): string {
+  return format(parseISO(dateStr), "dd 'de' MMMM", { locale: ptBR })
 }
 
-export function greeting() {
+export function formatDateShort(dateStr: string): string {
+  return format(parseISO(dateStr), 'dd/MM', { locale: ptBR })
+}
+
+export function formatDateTime(dateStr: string, time: string): string {
+  return `${format(parseISO(dateStr), "EEE, dd MMM", { locale: ptBR })} · ${time}`
+}
+
+export function greeting(): string {
   const h = new Date().getHours()
   if (h < 12) return 'Bom dia'
   if (h < 18) return 'Boa tarde'
   return 'Boa noite'
 }
 
-export function friendlyDate(dateStr: string) {
-  const d = parseISO(dateStr)
-  if (isToday(d)) return 'Hoje'
-  if (isYesterday(d)) return 'Ontem'
-  return formatDate(dateStr, "dd 'de' MMMM")
+export function daysUntil(dateStr: string): number {
+  return differenceInDays(parseISO(dateStr), new Date())
 }
 
-export function getDayOfWeek(dateStr: string) {
-  return format(parseISO(dateStr), 'EEEE', { locale: ptBR })
+export function daysLabel(n: number): string {
+  if (n < 0) return 'Venceu'
+  if (n === 0) return 'Hoje'
+  if (n === 1) return 'Amanhã'
+  return `${n}d`
 }
 
-export function getWeekDays(date = new Date()) {
+export function last7Days(): string[] {
+  const today = new Date()
+  return Array.from({ length: 7 }, (_, i) =>
+    subDays(today, 6 - i).toISOString().slice(0, 10)
+  )
+}
+
+export function last365Days(): string[] {
+  const today = new Date()
+  return Array.from({ length: 365 }, (_, i) =>
+    subDays(today, 364 - i).toISOString().slice(0, 10)
+  )
+}
+
+export function getWeekDays(date: Date): Date[] {
   const start = startOfWeek(date, { weekStartsOn: 1 })
   const end = endOfWeek(date, { weekStartsOn: 1 })
   return eachDayOfInterval({ start, end })
 }
 
-export function getMonthDays(date = new Date()) {
-  return eachDayOfInterval({ start: startOfMonth(date), end: endOfMonth(date) })
-}
+export function computeHabitStats(logs: HabitLog[], habitId: string): HabitStats {
+  const completed = logs
+    .filter(l => l.habitId === habitId && l.completed)
+    .map(l => l.date)
+    .sort()
+    .reverse()
 
-export function daysBetween(a: string, b: string) {
-  return Math.abs(differenceInDays(parseISO(a), parseISO(b)))
-}
+  let currentStreak = 0
+  let bestStreak = 0
+  let temp = 0
+  const today = todayISO()
+  const yesterday = subDays(new Date(), 1).toISOString().slice(0, 10)
+  const set = new Set(completed)
 
-export function generateId() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-}
-
-export function calculateLevel(xp: number) {
-  let currentLevel = LEVELS[0]
-  let nextLevel = LEVELS[1]
-  for (let i = LEVELS.length - 1; i >= 0; i--) {
-    if (xp >= LEVELS[i].xpRequired) {
-      currentLevel = LEVELS[i]
-      nextLevel = LEVELS[Math.min(i + 1, LEVELS.length - 1)]
-      break
+  let check = set.has(today) ? today : (set.has(yesterday) ? yesterday : null)
+  if (check) {
+    let d = new Date(check)
+    while (set.has(d.toISOString().slice(0, 10))) {
+      currentStreak++
+      d = subDays(d, 1)
     }
   }
-  const xpInLevel = xp - currentLevel.xpRequired
-  const xpForLevel = nextLevel.xpRequired - currentLevel.xpRequired
-  const progress = xpForLevel > 0 ? Math.round((xpInLevel / xpForLevel) * 100) : 100
-  return { ...currentLevel, nextLevel, xpToNext: nextLevel.xpRequired - xp, progress }
-}
 
-export function getHeatmapColor(count: number, max = 5) {
-  if (count === 0) return 'rgba(255,255,255,0.06)'
-  const intensity = Math.min(count / max, 1)
-  const alpha = 0.2 + intensity * 0.8
-  return `rgba(94, 106, 210, ${alpha})`
-}
-
-export function getStreakEmoji(streak: number) {
-  if (streak >= 100) return '🏆'
-  if (streak >= 30) return '🔥'
-  if (streak >= 7) return '⚡'
-  if (streak >= 3) return '✨'
-  return '📍'
-}
-
-export function getProgressColor(pct: number) {
-  if (pct >= 80) return '#10B981'
-  if (pct >= 50) return '#F59E0B'
-  return '#5E6AD2'
-}
-
-export function getMoodEmoji(mood: string) {
-  const map: Record<string, string> = {
-    great: '😄',
-    good: '😊',
-    okay: '😐',
-    bad: '😞',
-    terrible: '😢',
+  const allDays = completed.slice().reverse()
+  for (let i = 0; i < allDays.length; i++) {
+    if (i === 0) { temp = 1; continue }
+    const diff = differenceInDays(parseISO(allDays[i]), parseISO(allDays[i - 1]))
+    if (diff === 1) { temp++ } else { temp = 1 }
+    if (temp > bestStreak) bestStreak = temp
   }
-  return map[mood] ?? '😐'
+  if (temp > bestStreak) bestStreak = temp
+
+  const last30 = Array.from({ length: 30 }, (_, i) =>
+    subDays(new Date(), i).toISOString().slice(0, 10)
+  )
+  const totalLast30 = last30.filter(d => set.has(d)).length
+  const completionRate = Math.round((totalLast30 / 30) * 100)
+
+  return { currentStreak, bestStreak, completionRate, totalCompleted: completed.length }
 }
 
-export function getMoodLabel(mood: string) {
-  const map: Record<string, string> = {
-    great: 'Ótimo',
-    good: 'Bem',
-    okay: 'Normal',
-    bad: 'Mal',
-    terrible: 'Péssimo',
-  }
-  return map[mood] ?? 'Normal'
+export function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
 }
 
-export function truncate(str: string, n: number) {
-  return str.length > n ? str.slice(0, n - 1) + '…' : str
-}
-
-export function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
-
-export function formatXP(xp: number) {
-  if (xp >= 1000) return `${(xp / 1000).toFixed(1)}k`
-  return xp.toString()
-}
-
-export function getPriorityColor(priority: string) {
-  const map: Record<string, string> = {
-    urgent: '#EF4444',
-    high: '#F59E0B',
-    medium: '#5E6AD2',
-    low: '#8A8F98',
-  }
-  return map[priority] ?? '#8A8F98'
-}
-
-export function getPriorityLabel(priority: string) {
-  const map: Record<string, string> = {
-    urgent: 'Urgente',
-    high: 'Alta',
-    medium: 'Média',
-    low: 'Baixa',
-  }
-  return map[priority] ?? priority
-}
-
-export function getCategoryLabel(category: string) {
-  const map: Record<string, string> = {
-    health: 'Saúde',
-    fitness: 'Exercício',
-    mind: 'Mente',
-    productivity: 'Produtividade',
-    work: 'Trabalho',
-    social: 'Social',
-    finance: 'Finanças',
-    spirituality: 'Espiritualidade',
-    study: 'Estudos',
-    relationships: 'Relacionamentos',
-    personal: 'Pessoal',
-    leisure: 'Lazer',
-    other: 'Outro',
-  }
-  return map[category] ?? category
-}
-
-export function getFrequencyLabel(freq: string) {
-  const map: Record<string, string> = {
-    daily: 'Diário',
-    weekly: 'Semanal',
-    monthly: 'Mensal',
-  }
-  return map[freq] ?? freq
-}
-
-export function last7Days() {
-  const days = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    days.push(format(d, 'yyyy-MM-dd'))
-  }
-  return days
-}
-
-export function getLast365Days() {
-  const days = []
-  for (let i = 364; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    days.push(format(d, 'yyyy-MM-dd'))
-  }
-  return days
+export function formatDuration(startTime: string, endTime: string): string {
+  const diff = timeToMinutes(endTime) - timeToMinutes(startTime)
+  if (diff < 60) return `${diff}min`
+  const h = Math.floor(diff / 60)
+  const m = diff % 60
+  return m ? `${h}h${m}min` : `${h}h`
 }

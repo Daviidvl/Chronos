@@ -4,256 +4,149 @@ import { motion } from 'framer-motion'
 import { useHabitsStore } from '@/lib/store/useHabitsStore'
 import { useTasksStore } from '@/lib/store/useTasksStore'
 import { useGoalsStore } from '@/lib/store/useGoalsStore'
-import { useJournalStore } from '@/lib/store/useJournalStore'
-import { CATEGORY_COLORS } from '@/types'
-import { getStreakEmoji, getCategoryLabel, last7Days, todayISO } from '@/lib/utils'
-import { format, parseISO, differenceInDays } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Lightbulb, TrendingUp, Zap, Trophy, Target, BookOpen, Flame } from 'lucide-react'
+import { Habit, HabitLog, Task, Goal, CATEGORY_COLORS } from '@/types'
+import { computeHabitStats, last7Days, todayISO } from '@/lib/utils'
+import { differenceInDays, parseISO } from 'date-fns'
+import { TrendingUp, Flame, AlertCircle, Lightbulb, Star } from 'lucide-react'
+
+type InsightType = 'positive' | 'warning' | 'tip' | 'streak' | 'neutral'
 
 interface Insight {
-  id: string
-  icon: string
-  title: string
-  description: string
-  type: 'positive' | 'tip' | 'warning' | 'achievement'
-  color: string
+  id: string; type: InsightType; title: string; description: string
 }
 
-function generateInsights(
-  habits: ReturnType<typeof useHabitsStore.getState>['habits'],
-  getStats: (id: string) => any,
-  logs: ReturnType<typeof useHabitsStore.getState>['logs'],
-  tasks: ReturnType<typeof useTasksStore.getState>['tasks'],
-  goals: ReturnType<typeof useGoalsStore.getState>['goals'],
-  entries: ReturnType<typeof useJournalStore.getState>['entries'],
-): Insight[] {
-  const insights: Insight[] = []
+const TYPE_CONFIG: Record<InsightType, { icon: typeof TrendingUp; color: string; bg: string; label: string }> = {
+  positive: { icon: TrendingUp,    color: 'var(--positive)',  bg: 'var(--positive-dim)', label: 'Positivo' },
+  streak:   { icon: Flame,         color: 'var(--warning)',   bg: 'var(--warning-dim)',  label: 'Sequência' },
+  warning:  { icon: AlertCircle,   color: 'var(--danger)',    bg: 'var(--danger-dim)',   label: 'Atenção' },
+  tip:      { icon: Lightbulb,     color: 'var(--accent)',    bg: 'var(--accent-dim)',   label: 'Dica' },
+  neutral:  { icon: Star,          color: 'var(--text-3)',    bg: 'rgba(255,255,255,0.04)', label: 'Padrão' },
+}
 
-  if (habits.length === 0) return []
+function generateInsights(habits: Habit[], logs: HabitLog[], tasks: Task[], goals: Goal[]): Insight[] {
+  const ins: Insight[] = []
+  if (!habits.length) return ins
 
-  // Best habit
-  const bestHabit = habits.reduce((best, h) => {
-    const s = getStats(h.id)
-    const bestS = getStats(best.id)
-    return s.completionRate > bestS.completionRate ? h : best
-  }, habits[0])
-  const bestStats = getStats(bestHabit.id)
-
+  const best = habits.reduce((a, b) =>
+    computeHabitStats(logs, a.id).completionRate >= computeHabitStats(logs, b.id).completionRate ? a : b
+  )
+  const bestStats = computeHabitStats(logs, best.id)
   if (bestStats.completionRate >= 70) {
-    insights.push({
-      id: 'best-habit',
-      icon: '🏆',
-      title: `${bestHabit.name} é seu hábito mais consistente`,
-      description: `Taxa de conclusão de ${bestStats.completionRate}% — você está indo muito bem! Mantenha o ritmo e em breve chegará a 90%+.`,
-      type: 'positive',
-      color: '#10B981',
-    })
+    ins.push({ id: 'best', type: 'positive', title: `${best.name} é seu hábito mais consistente`, description: `Taxa de ${bestStats.completionRate}% nos últimos 30 dias. Padrão sólido estabelecido.` })
   }
 
-  // Best streak
-  const topStreak = habits.reduce((max, h) => {
-    const s = getStats(h.id)
-    return s.currentStreak > getStats(max.id).currentStreak ? h : max
-  }, habits[0])
-  const topStreakStats = getStats(topStreak.id)
-  if (topStreakStats.currentStreak >= 3) {
-    insights.push({
-      id: 'streak',
-      icon: '🔥',
-      title: `${topStreakStats.currentStreak} dias seguidos de ${topStreak.name}!`,
-      description: `${getStreakEmoji(topStreakStats.currentStreak)} Você está construindo uma sequência poderosa. Não quebre o ritmo!`,
-      type: 'achievement',
-      color: '#F59E0B',
-    })
+  const topStreak = habits.reduce((a, b) =>
+    computeHabitStats(logs, a.id).currentStreak >= computeHabitStats(logs, b.id).currentStreak ? a : b
+  )
+  const topStats = computeHabitStats(logs, topStreak.id)
+  if (topStats.currentStreak >= 3) {
+    ins.push({ id: 'streak', type: 'streak', title: `${topStats.currentStreak} dias seguidos de ${topStreak.name}`, description: 'Cada dia reforça o caminho neural do hábito. Continue.' })
   }
 
-  // Day of week analysis
-  const dayCompletions: Record<number, number> = {}
-  const dayCounts: Record<number, number> = {}
+  const dayCount: Record<number, number> = {}
   logs.filter(l => l.completed).forEach(l => {
-    const day = parseISO(l.date).getDay()
-    dayCompletions[day] = (dayCompletions[day] ?? 0) + 1
-    dayCounts[day] = (dayCounts[day] ?? 0) + 1
+    const d = parseISO(l.date).getDay()
+    dayCount[d] = (dayCount[d] ?? 0) + 1
   })
-  const bestDay = Object.entries(dayCompletions).sort(([, a], [, b]) => b - a)[0]
-  if (bestDay) {
-    const dayNames = ['domingos', 'segundas', 'terças', 'quartas', 'quintas', 'sextas', 'sábados']
-    insights.push({
-      id: 'best-day',
-      icon: '📅',
-      title: `Você é mais consistente às ${dayNames[Number(bestDay[0])]}`,
-      description: `Com ${bestDay[1]} check-ins, ${dayNames[Number(bestDay[0])]} é seu dia mais produtivo. Aproveite essa energia!`,
-      type: 'positive',
-      color: '#5E6AD2',
-    })
+  const bestDayEntry = Object.entries(dayCount).sort(([, a], [, b]) => b - a)[0]
+  if (bestDayEntry) {
+    const names = ['domingos', 'segundas', 'terças', 'quartas', 'quintas', 'sextas', 'sábados']
+    ins.push({ id: 'day', type: 'neutral', title: `Mais produtivo às ${names[+bestDayEntry[0]]}`, description: 'Considere agendar tarefas mais difíceis nesse dia.' })
   }
 
-  // Tasks insights
-  const completedTasks = tasks.filter(t => t.completed)
-  if (completedTasks.length > 0) {
-    const recentWeekTasks = completedTasks.filter(t => {
-      const d = differenceInDays(new Date(), parseISO(t.completedAt ?? t.createdAt))
-      return d <= 7
-    }).length
+  const weekTasks = tasks.filter(t => t.completed && t.completedAt && differenceInDays(new Date(), parseISO(t.completedAt)) <= 7).length
+  if (weekTasks >= 5) {
+    ins.push({ id: 'tasks', type: 'positive', title: `${weekTasks} tarefas concluídas nesta semana`, description: 'Semana produtiva. Ótimo ritmo de execução.' })
+  }
 
-    if (recentWeekTasks >= 5) {
-      insights.push({
-        id: 'tasks-week',
-        icon: '⚡',
-        title: `${recentWeekTasks} tarefas esta semana!`,
-        description: 'Uma semana muito produtiva. Sua capacidade de execução está no ponto.',
-        type: 'positive',
-        color: '#8B5CF6',
-      })
+  const nearGoals = goals.filter(g => g.deadline && differenceInDays(parseISO(g.deadline), new Date()) <= 14 && g.progress < 100)
+  if (nearGoals.length) {
+    ins.push({ id: 'goals', type: 'warning', title: `${nearGoals.length} meta(s) com prazo próximo`, description: `"${nearGoals[0].title}" vence em breve. Revise os marcos restantes.` })
+  }
+
+  if (habits.length > 1) {
+    const worst = habits.reduce((a, b) =>
+      computeHabitStats(logs, a.id).completionRate <= computeHabitStats(logs, b.id).completionRate ? a : b
+    )
+    const ws = computeHabitStats(logs, worst.id)
+    if (ws.completionRate < 50) {
+      ins.push({ id: 'improve', type: 'tip', title: `${worst.name} com ${ws.completionRate}% de conclusão`, description: 'Tente reduzir a frequência ou vincular a um hábito já consolidado.' })
     }
   }
 
-  // Goals insights
-  const nearGoals = goals.filter(g => g.deadline && differenceInDays(parseISO(g.deadline), new Date()) <= 14 && g.progress < 100)
-  if (nearGoals.length > 0) {
-    insights.push({
-      id: 'near-goals',
-      icon: '🎯',
-      title: `${nearGoals.length} meta${nearGoals.length > 1 ? 's' : ''} com prazo próximo`,
-      description: `"${nearGoals[0].title}" vence em breve. Foque nos marcos restantes!`,
-      type: 'warning',
-      color: '#F59E0B',
-    })
-  }
-
-  // Journal consistency
-  const recentEntries = entries.filter(e => differenceInDays(new Date(), parseISO(e.date)) <= 7)
-  if (recentEntries.length >= 5) {
-    insights.push({
-      id: 'journal',
-      icon: '✍️',
-      title: 'Escrevendo quase todo dia!',
-      description: `${recentEntries.length} entradas nos últimos 7 dias. A reflexão diária acelera o crescimento.`,
-      type: 'positive',
-      color: '#10B981',
-    })
-  }
-
-  // Low performing habit
-  const worstHabit = habits.reduce((worst, h) => {
-    const s = getStats(h.id)
-    const worstS = getStats(worst.id)
-    return s.completionRate < worstS.completionRate ? h : worst
-  }, habits[0])
-  const worstStats = getStats(worstHabit.id)
-  if (worstStats.completionRate < 50 && habits.length > 1) {
-    insights.push({
-      id: 'improve-habit',
-      icon: '💡',
-      title: `Dica: ${worstHabit.name} precisa de atenção`,
-      description: `Com apenas ${worstStats.completionRate}% de conclusão, este hábito pode ser reajustado. Tente reduzir a frequência ou vincular a outro hábito.`,
-      type: 'tip',
-      color: '#8A8F98',
-    })
-  }
-
-  return insights
+  return ins
 }
 
 export default function InsightsPage() {
-  const { getActiveHabits, logs, getStats } = useHabitsStore()
+  const { getActiveHabits, logs, getLogForDate } = useHabitsStore()
   const { tasks } = useTasksStore()
   const { getActiveGoals } = useGoalsStore()
-  const { entries } = useJournalStore()
 
   const habits = getActiveHabits()
   const goals = getActiveGoals()
-  const insights = generateInsights(habits, getStats, logs, tasks, goals, entries)
-
-  const typeStyles: Record<string, { bg: string; border: string }> = {
-    positive: { bg: 'rgba(16,185,129,0.06)', border: 'rgba(16,185,129,0.15)' },
-    achievement: { bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.15)' },
-    warning: { bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.2)' },
-    tip: { bg: 'var(--surface)', border: 'var(--border)' },
-  }
+  const insights = generateInsights(habits, logs, tasks, goals)
+  const days = last7Days()
+  const today = todayISO()
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
-      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Insights</h1>
-        <p className="text-sm text-[var(--text-tertiary)] mt-0.5">
-          Padrões e recomendações baseados no seu histórico
-        </p>
-      </motion.div>
+    <div className="max-w-xl mx-auto px-5 pt-8 pb-6">
+      <motion.header initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        <h1 className="text-[32px] font-semibold text-[var(--text-1)] tracking-tight leading-none">Insights</h1>
+        <p className="text-[14px] text-[var(--text-3)] mt-2">Padrões dos últimos 30 dias</p>
+      </motion.header>
 
-      {/* Insights grid */}
-      <div className="space-y-3">
-        {insights.map((insight, i) => {
-          const style = typeStyles[insight.type]
-          return (
-            <motion.div
-              key={insight.id}
-              initial={{ opacity: 0, y: 8, x: -4 }}
-              animate={{ opacity: 1, y: 0, x: 0 }}
-              transition={{ delay: i * 0.07, duration: 0.25 }}
-              className="flex items-start gap-4 px-4 py-4 rounded-2xl"
-              style={{ background: style.bg, border: `1px solid ${style.border}` }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                style={{ background: `${insight.color}20` }}
+      {insights.length === 0 ? (
+        <div className="text-center py-20">
+          <p className="text-[14px] text-[var(--text-3)]">Use o Chronos por alguns dias para gerar insights.</p>
+        </div>
+      ) : (
+        <div className="space-y-3 mb-8">
+          {insights.map((ins, i) => {
+            const cfg = TYPE_CONFIG[ins.type]
+            const Icon = cfg.icon
+            return (
+              <motion.div
+                key={ins.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className="flex gap-4 p-4 rounded-[20px]"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: `3px solid ${cfg.color}` }}
               >
-                {insight.icon}
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{insight.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{insight.description}</p>
-              </div>
-            </motion.div>
-          )
-        })}
+                <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: cfg.bg }}>
+                  <Icon size={15} style={{ color: cfg.color }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-medium uppercase tracking-widest mb-1" style={{ color: cfg.color }}>{cfg.label}</div>
+                  <h3 className="text-[14px] font-medium text-[var(--text-1)] mb-1">{ins.title}</h3>
+                  <p className="text-[13px] text-[var(--text-3)] leading-relaxed">{ins.description}</p>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
 
-        {insights.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-            <div className="text-4xl mb-4">🔍</div>
-            <h3 className="text-base font-medium text-[var(--text-primary)] mb-2">Coletando dados...</h3>
-            <p className="text-sm text-[var(--text-tertiary)] max-w-xs mx-auto">
-              Use o Chronos por alguns dias e os insights aparecerão automaticamente baseados nos seus padrões.
-            </p>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Summary stats */}
       {habits.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-6 p-4 rounded-2xl"
-          style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
-        >
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Resumo da semana</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {habits.slice(0, 4).map(habit => {
-              const stats = getStats(habit.id)
-              const color = CATEGORY_COLORS[habit.category] ?? '#5E6AD2'
-              const history = last7Days().map(d => {
-                const log = logs.find(l => l.habitId === habit.id && l.date === d)
-                return log?.completed ?? false
-              })
-
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <h2 className="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-widest mb-3">Esta Semana</h2>
+          <div className="rounded-[20px] p-4 space-y-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            {habits.map(h => {
+              const stats = computeHabitStats(logs, h.id)
               return (
-                <div key={habit.id} className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{habit.icon}</span>
-                    <span className="text-xs font-medium text-[var(--text-secondary)] truncate">{habit.name}</span>
-                    <span className="ml-auto text-xs font-semibold flex-shrink-0" style={{ color }}>{stats.currentStreak}d</span>
+                <div key={h.id}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[13px] text-[var(--text-2)]">{h.name}</span>
+                    <span className="text-[12px] font-medium" style={{ color: h.color }}>{stats.currentStreak}d</span>
                   </div>
                   <div className="flex gap-1">
-                    {history.map((done, di) => (
-                      <div
-                        key={di}
-                        className="flex-1 h-1.5 rounded-full"
-                        style={{ background: done ? color : 'var(--surface-active)' }}
-                      />
-                    ))}
+                    {days.map(d => {
+                      const done = getLogForDate(h.id, d)?.completed ?? false
+                      return (
+                        <div key={d} className="flex-1 h-1.5 rounded-full transition-all"
+                          style={{ background: done ? h.color : 'rgba(255,255,255,0.06)', opacity: d === today ? 1 : 0.7 }} />
+                      )
+                    })}
                   </div>
                 </div>
               )
