@@ -25,6 +25,46 @@ export function greeting(): string {
   return 'Boa noite'
 }
 
+export function greetingEmoji(): string {
+  const h = new Date().getHours()
+  if (h < 12) return '☀️'
+  if (h < 18) return '🌤️'
+  return '🌙'
+}
+
+export function formatMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}min`
+}
+
+export const REVIEW_INTERVALS = [1, 3, 7, 15, 30]
+
+export function nextReviewInterval(current: number | null): number {
+  if (!current) return 1
+  const idx = REVIEW_INTERVALS.indexOf(current)
+  return idx === -1 || idx === REVIEW_INTERVALS.length - 1
+    ? 30
+    : REVIEW_INTERVALS[idx + 1]
+}
+
+export function calcStreak(completedDates: string[]): number {
+  const unique = [...new Set(completedDates)].sort().reverse()
+  let streak = 0
+  for (let i = 0; i < 60; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const iso = format(d, 'yyyy-MM-dd')
+    if (unique.includes(iso)) {
+      streak++
+    } else {
+      break
+    }
+  }
+  return streak
+}
+
 export function formatTime(time: string | null): string {
   if (!time) return ''
   return time.slice(0, 5)

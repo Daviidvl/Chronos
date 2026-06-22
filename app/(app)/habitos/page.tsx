@@ -1,10 +1,9 @@
-'use client'
-
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X, Check, Flame, Repeat2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { todayISO, last7Days } from '@/lib/utils'
+import { useModal } from '@/lib/modal-context'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { Habit, HabitLog } from '@/types'
@@ -14,7 +13,7 @@ const PALETTE = [
   '#8B5CF6', '#EC4899', '#0EA5E9', '#14B8A6',
 ]
 
-/* ── Habit Card ───────────────────────────────────────── */
+/* â”€â”€ Habit Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function HabitCard({
   habit, logs, onToggle, onDelete,
 }: {
@@ -132,7 +131,7 @@ function HabitCard({
   )
 }
 
-/* ── Add Sheet ────────────────────────────────────────── */
+/* â”€â”€ Add Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AddSheet({ onClose, onAdd, userId }: {
   onClose: () => void
   onAdd: (h: Habit) => void
@@ -160,24 +159,18 @@ function AddSheet({ onClose, onAdd, userId }: {
     <>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(18,24,38,0.32)', backdropFilter: 'blur(8px)' }}
+        className="sheet-overlay"
         onClick={onClose}
       />
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 380, damping: 42 }}
-        style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: '#FFFFFF',
-          borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
-          boxShadow: 'var(--sh-lg)',
-        }}
-        className="sheet-body"
+        className="sheet-container sheet-body"
       >
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
-            Novo hábito
+            Novo hÃ¡bito
           </span>
           <button onClick={onClose} className="btn-icon"><X size={16} /></button>
         </div>
@@ -188,7 +181,7 @@ function AddSheet({ onClose, onAdd, userId }: {
               autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Ex: Leitura, Treino, Meditação..."
+              placeholder="Ex: Leitura, Treino, MeditaÃ§Ã£o..."
               className="field"
             />
           </div>
@@ -209,7 +202,7 @@ function AddSheet({ onClose, onAdd, userId }: {
           </div>
 
           <button type="submit" disabled={!name.trim() || saving} className="btn btn-brand">
-            {saving ? 'A guardar...' : 'Criar hábito'}
+            {saving ? 'A guardar...' : 'Criar hÃ¡bito'}
           </button>
         </form>
       </motion.div>
@@ -217,7 +210,7 @@ function AddSheet({ onClose, onAdd, userId }: {
   )
 }
 
-/* ── Skeleton ─────────────────────────────────────────── */
+/* â”€â”€ Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function HabitSkeleton() {
   return (
     <div className="card" style={{ padding: '16px 18px' }}>
@@ -237,13 +230,14 @@ function HabitSkeleton() {
   )
 }
 
-/* ── Page ─────────────────────────────────────────────── */
+/* â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function HabitosPage() {
   const [habits, setHabits]   = useState<Habit[]>([])
   const [logs, setLogs]       = useState<HabitLog[]>([])
   const [userId, setUserId]   = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { open: openModal, close: closeModal } = useModal()
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -294,7 +288,7 @@ export default function HabitosPage() {
         style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40 }}
       >
         <div>
-          <h1 className="t-display">Hábitos</h1>
+          <h1 className="t-display">HÃ¡bitos</h1>
           {habits.length > 0 && (
             <p style={{ fontSize: 14, color: '#9BA5B4', marginTop: 6, fontWeight: 400 }}>
               {doneToday} de {habits.length} hoje
@@ -302,7 +296,7 @@ export default function HabitosPage() {
           )}
         </div>
         <button
-          onClick={() => setShowAdd(true)}
+          onClick={() => { setShowAdd(true); openModal() }}
           className="btn btn-brand"
           style={{ width: 'auto', minHeight: 44, padding: '0 18px', fontSize: 14 }}
         >
@@ -344,8 +338,8 @@ export default function HabitosPage() {
           <div className="empty-icon" style={{ background: '#D3F9EE', color: '#2CC08C' }}>
             <Repeat2 size={24} />
           </div>
-          <p className="empty-title">Nenhum hábito ainda</p>
-          <p className="empty-sub">Cria o teu primeiro hábito</p>
+          <p className="empty-title">Nenhum hÃ¡bito ainda</p>
+          <p className="empty-sub">Cria o teu primeiro hÃ¡bito</p>
         </motion.div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -360,7 +354,7 @@ export default function HabitosPage() {
       <AnimatePresence>
         {showAdd && (
           <AddSheet
-            onClose={() => setShowAdd(false)}
+            onClose={() => { setShowAdd(false); closeModal() }}
             onAdd={h => setHabits(hs => [...hs, h])}
             userId={userId}
           />

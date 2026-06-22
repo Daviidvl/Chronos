@@ -1,13 +1,11 @@
-'use client'
-
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eye, EyeOff, Layers, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
@@ -30,8 +28,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/hoje')
-    router.refresh()
+    navigate('/hoje', { replace: true })
   }
 
   return (

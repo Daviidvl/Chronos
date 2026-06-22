@@ -1,111 +1,17 @@
-'use client'
-
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Plus, X, Clock, Check, ListTodo } from 'lucide-react'
+import { Plus, X, Layers } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { todayISO, greeting, timeRange } from '@/lib/utils'
-import type { Task, Category } from '@/types'
+import { todayISO, calcStreak } from '@/lib/utils'
+import { useModal } from '@/lib/modal-context'
+import { MotivationCard }   from '@/components/dashboard/MotivationCard'
+import { StatsCards }       from '@/components/dashboard/StatsCards'
+import { HabitsToday }      from '@/components/dashboard/HabitsToday'
+import { TasksToday }       from '@/components/dashboard/TasksToday'
+import { ProgressCard }     from '@/components/dashboard/ProgressCard'
+import { TodayStudyCard }   from '@/components/dashboard/TodayStudyCard'
+import type { Task, Category, Habit, HabitLog } from '@/types'
 
-/* ── Badge ────────────────────────────────────────────── */
-function CategoryBadge({ color, name }: { color: string; name: string }) {
-  return (
-    <span
-      className="badge"
-      style={{ background: color + '18', color }}
-    >
-      {name}
-    </span>
-  )
-}
-
-/* ── Task Card ────────────────────────────────────────── */
-function TaskCard({
-  task, onToggle, onDelete,
-}: {
-  task: Task & { category?: Category }
-  onToggle: (id: string, done: boolean) => void
-  onDelete: (id: string) => void
-}) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
-      className="card"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className="task-row">
-        {/* Checkbox */}
-        <button
-          onClick={() => onToggle(task.id, !task.completed)}
-          className={`check${task.completed ? ' check--done' : ''}`}
-        >
-          <AnimatePresence>
-            {task.completed && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                transition={{ type: 'spring', stiffness: 600, damping: 30 }}
-              >
-                <Check size={11} strokeWidth={3} color="#fff" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </button>
-
-        {/* Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p className={`task-title${task.completed ? ' task-title--done' : ''}`}>
-            {task.title}
-          </p>
-
-          {(task.start_time || task.category) && (
-            <div className="task-meta">
-              {task.start_time && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Clock size={11} />
-                  {timeRange(task.start_time, task.end_time)}
-                </span>
-              )}
-              {task.category && (
-                <CategoryBadge
-                  color={task.category.color}
-                  name={task.category.name}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Delete */}
-        <AnimatePresence>
-          {hovered && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.12 }}
-              onClick={() => onDelete(task.id)}
-              className="btn-icon danger"
-            >
-              <X size={14} />
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  )
-}
-
-/* ── Add Sheet ────────────────────────────────────────── */
 function AddSheet({
   onClose, onAdd, categories, userId,
 }: {
@@ -118,6 +24,7 @@ function AddSheet({
   const [startTime, setStartTime]   = useState('')
   const [endTime, setEndTime]       = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [priority, setPriority]     = useState<'high' | 'medium' | 'low'>('medium')
   const [saving, setSaving]         = useState(false)
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -134,6 +41,7 @@ function AddSheet({
         start_time:  startTime || null,
         end_time:    endTime   || null,
         category_id: categoryId,
+        priority,
         completed:   false,
       })
       .select('*, category:categories(*)')
@@ -143,13 +51,19 @@ function AddSheet({
     setSaving(false)
   }
 
+  const PRIORITIES: { value: 'high' | 'medium' | 'low'; label: string; color: string }[] = [
+    { value: 'high',   label: 'Alta',  color: '#F04438' },
+    { value: 'medium', label: 'Média', color: '#F79009' },
+    { value: 'low',    label: 'Baixa', color: '#2CC08C' },
+  ]
+
   return (
     <>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(18,24,38,0.32)', backdropFilter: 'blur(8px)' }}
+        className="sheet-overlay"
         onClick={onClose}
       />
       <motion.div
@@ -157,13 +71,7 @@ function AddSheet({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 380, damping: 42 }}
-        style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: '#FFFFFF',
-          borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
-          boxShadow: 'var(--sh-lg)',
-        }}
-        className="sheet-body"
+        className="sheet-container sheet-body"
       >
         <div className="sheet-handle" />
 
@@ -171,24 +79,49 @@ function AddSheet({
           <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
             Nova tarefa
           </span>
-          <button onClick={onClose} className="btn-icon">
-            <X size={16} />
-          </button>
+          <button onClick={onClose} className="btn-icon"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleAdd}>
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 14 }}>
             <input
               autoFocus
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="O que vais fazer?"
               className="field"
-              onKeyDown={e => e.key === 'Enter' && handleAdd(e as unknown as React.FormEvent)}
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Prioridade</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {PRIORITIES.map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setPriority(p.value)}
+                  style={{
+                    flex: 1,
+                    height: 40,
+                    borderRadius: 'var(--r-xs)',
+                    border: `1.5px solid ${priority === p.value ? p.color : 'var(--bdr-2)'}`,
+                    background: priority === p.value ? p.color + '15' : '#FFFFFF',
+                    color: priority === p.value ? p.color : '#9BA5B4',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             {[
               { label: 'Início', value: startTime, set: setStartTime },
               { label: 'Fim',    value: endTime,   set: setEndTime },
@@ -247,31 +180,61 @@ function AddSheet({
   )
 }
 
-/* ── Skeleton ─────────────────────────────────────────── */
-function TaskSkeleton() {
+function DashSkeleton() {
   return (
-    <div className="card">
-      <div className="task-row" style={{ alignItems: 'center' }}>
-        <div className="skel" style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div className="skel" style={{ height: 14, width: '62%', marginBottom: 8 }} />
-          <div className="skel" style={{ height: 11, width: '38%' }} />
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="skel" style={{ height: 190, borderRadius: 'var(--r-lg)' }} />
+      <div className="stat-grid">
+        {[1,2,3].map(i => (
+          <div key={i} className="skel" style={{ height: 96, borderRadius: 'var(--r)' }} />
+        ))}
       </div>
+      {[1,2].map(i => (
+        <div key={i}>
+          <div className="skel" style={{ height: 18, width: '40%', marginBottom: 12, borderRadius: 6 }} />
+          <div className="skel" style={{ height: 72, borderRadius: 'var(--r)' }} />
+        </div>
+      ))}
     </div>
   )
 }
 
-/* ── Page ─────────────────────────────────────────────── */
-export default function HojePage() {
-  const [tasks, setTasks]         = useState<Task[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [userId, setUserId]       = useState('')
-  const [showAdd, setShowAdd]     = useState(false)
-  const [loading, setLoading]     = useState(true)
+function EmptyState({ onAddTask }: { onAddTask: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="empty"
+      style={{ paddingTop: 40 }}
+    >
+      <div className="empty-icon">
+        <Layers size={26} />
+      </div>
+      <p className="empty-title">Dia vazio por enquanto</p>
+      <p className="empty-sub" style={{ marginBottom: 24 }}>
+        Ainda não há hábitos ou tarefas para hoje.
+      </p>
+      <button onClick={onAddTask} className="btn btn-brand" style={{ width: 'auto', padding: '0 28px' }}>
+        <Plus size={15} strokeWidth={2.5} />
+        Criar primeira tarefa
+      </button>
+    </motion.div>
+  )
+}
 
+export default function HojePage() {
+  const [tasks,      setTasks]      = useState<Task[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [habits,     setHabits]     = useState<Habit[]>([])
+  const [habitLogs,  setHabitLogs]  = useState<HabitLog[]>([])
+  const [streak,     setStreak]     = useState(0)
+  const [userId,     setUserId]     = useState('')
+  const [userName,   setUserName]   = useState('')
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [loading,    setLoading]    = useState(true)
+
+  const { open: openModal, close: closeModal } = useModal()
   const today = todayISO()
-  const now   = new Date()
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -279,22 +242,42 @@ export default function HojePage() {
     if (!user) return
     setUserId(user.id)
 
-    const [{ data: tasksData }, { data: catsData }] = await Promise.all([
+    const emailPrefix = user.email?.split('@')[0] ?? ''
+    setUserName(emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1))
+
+    const sixtyDaysAgo = new Date()
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+    const sinceISO = sixtyDaysAgo.toISOString().split('T')[0]
+
+    const [
+      { data: tasksData },
+      { data: catsData },
+      { data: habitsData },
+      { data: logsData },
+      { data: streakData },
+    ] = await Promise.all([
       supabase
         .from('tasks')
         .select('*, category:categories(*)')
         .eq('user_id', user.id)
         .eq('date', today)
         .order('start_time', { ascending: true, nullsFirst: false }),
+      supabase.from('categories').select('*').eq('user_id', user.id).order('name'),
+      supabase.from('habits').select('*').eq('user_id', user.id).eq('active', true).order('created_at'),
+      supabase.from('habit_logs').select('*').eq('user_id', user.id).eq('date', today),
       supabase
-        .from('categories')
-        .select('*')
+        .from('habit_logs')
+        .select('date')
         .eq('user_id', user.id)
-        .order('name'),
+        .eq('completed', true)
+        .gte('date', sinceISO),
     ])
 
     setTasks((tasksData as Task[]) ?? [])
     setCategories((catsData as Category[]) ?? [])
+    setHabits((habitsData as Habit[]) ?? [])
+    setHabitLogs((logsData as HabitLog[]) ?? [])
+    setStreak(calcStreak((streakData ?? []).map((r: { date: string }) => r.date)))
     setLoading(false)
   }, [today])
 
@@ -306,110 +289,78 @@ export default function HojePage() {
     await supabase.from('tasks').update({ completed: done }).eq('id', id)
   }
 
-  const deleteTask = async (id: string) => {
-    setTasks(ts => ts.filter(t => t.id !== id))
+  const toggleHabit = async (habit: Habit, done: boolean) => {
     const supabase = createClient()
-    await supabase.from('tasks').delete().eq('id', id)
+    const existing = habitLogs.find(l => l.habit_id === habit.id)
+
+    if (existing) {
+      await supabase.from('habit_logs').update({ completed: done }).eq('id', existing.id)
+      setHabitLogs(ls => ls.map(l => l.id === existing.id ? { ...l, completed: done } : l))
+    } else {
+      const { data } = await supabase
+        .from('habit_logs')
+        .insert({ user_id: userId, habit_id: habit.id, date: today, completed: done })
+        .select()
+        .single()
+      if (data) setHabitLogs(ls => [...ls, data as HabitLog])
+    }
+
+    if (done) setStreak(s => s === 0 ? 1 : s)
   }
 
-  const pending   = tasks.filter(t => !t.completed)
-  const completed = tasks.filter(t => t.completed)
-  const pct       = tasks.length > 0 ? Math.round((completed.length / tasks.length) * 100) : 0
-  const allDone   = tasks.length > 0 && pct === 100
+  const tasksCompleted  = tasks.filter(t => t.completed).length
+  const habitsCompleted = habits.filter(h => habitLogs.some(l => l.habit_id === h.id && l.completed)).length
+
+  const totalItems     = tasks.length + habits.length
+  const completedItems = tasksCompleted + habitsCompleted
+  const percentage     = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+
+  const hasAnything = tasks.length > 0 || habits.length > 0
 
   return (
     <div className="page">
 
-      {/* ── Header ── */}
-      <motion.header
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16,1,0.3,1] }}
-        style={{ marginBottom: 40 }}
-      >
-        <p style={{ fontSize: 13, color: '#9BA5B4', fontWeight: 500, marginBottom: 8, textTransform: 'capitalize' }}>
-          {format(now, "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </p>
-        <h1 className="t-display" style={{ marginBottom: 28 }}>
-          {greeting()}, David.
-        </h1>
-
-        {/* Progress */}
-        <div className="card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#6E7787' }}>
-              {tasks.length === 0
-                ? 'Sem tarefas hoje'
-                : `${completed.length} de ${tasks.length} ${tasks.length === 1 ? 'tarefa' : 'tarefas'}`}
-            </span>
-            {tasks.length > 0 && (
-              <span
-                className="badge-pill"
-                style={{
-                  background: allDone ? '#D3F9EE' : 'rgba(110,92,246,0.10)',
-                  color:      allDone ? '#2CC08C' : '#6E5CF6',
-                }}
-              >
-                {pct}%
-              </span>
-            )}
-          </div>
-          <div className="progress-track">
-            <motion.div
-              className={`progress-fill${allDone ? ' progress-fill--success' : ''}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            />
-          </div>
-        </div>
-      </motion.header>
-
-      {/* ── Tasks ── */}
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[1, 2, 3].map(i => <TaskSkeleton key={i} />)}
-        </div>
-      ) : tasks.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty">
-          <div className="empty-icon">
-            <ListTodo size={24} />
-          </div>
-          <p className="empty-title">Nenhuma tarefa para hoje</p>
-          <p className="empty-sub">Toca em + para adicionar a primeira</p>
-        </motion.div>
+        <DashSkeleton />
+      ) : !hasAnything ? (
+        <>
+          <MotivationCard percentage={0} completed={0} total={0} name={userName} />
+          <EmptyState onAddTask={() => { setShowAdd(true); openModal() }} />
+        </>
       ) : (
-        <div>
-          {/* Pending */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <AnimatePresence mode="popLayout">
-              {pending.map(task => (
-                <TaskCard key={task.id} task={task} onToggle={toggleTask} onDelete={deleteTask} />
-              ))}
-            </AnimatePresence>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-          {/* Completed */}
-          {completed.length > 0 && (
-            <div style={{ marginTop: 36 }}>
-              <p className="t-label" style={{ marginBottom: 12, paddingLeft: 2 }}>
-                Concluídas · {completed.length}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <AnimatePresence mode="popLayout">
-                  {completed.map(task => (
-                    <TaskCard key={task.id} task={task} onToggle={toggleTask} onDelete={deleteTask} />
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          )}
+          <MotivationCard
+            percentage={percentage}
+            completed={completedItems}
+            total={totalItems}
+            name={userName}
+          />
+
+          <StatsCards
+            habitsCompleted={habitsCompleted}
+            habitsTotal={habits.length}
+            tasksCompleted={tasksCompleted}
+            tasksTotal={tasks.length}
+            streak={streak}
+          />
+
+          <HabitsToday habits={habits} logs={habitLogs} onToggle={toggleHabit} />
+
+          <TasksToday tasks={tasks} onToggle={toggleTask} />
+
+          <ProgressCard
+            completed={completedItems}
+            total={totalItems}
+            percentage={percentage}
+          />
+
+          <TodayStudyCard />
         </div>
       )}
 
-      {/* ── FAB ── */}
       <motion.button
-        onClick={() => setShowAdd(true)}
+        onClick={() => { setShowAdd(true); openModal() }}
         className="fab"
         whileTap={{ scale: 0.95 }}
         whileHover={{ scale: 1.03 }}
@@ -421,7 +372,7 @@ export default function HojePage() {
       <AnimatePresence>
         {showAdd && (
           <AddSheet
-            onClose={() => setShowAdd(false)}
+            onClose={() => { setShowAdd(false); closeModal() }}
             onAdd={task => setTasks(ts => [...ts, task])}
             categories={categories}
             userId={userId}

@@ -1,6 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
 @import "tailwindcss";
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(110, 92, 246, 0.15);
+  border-top-color: #6E5CF6;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
 /* ═══════════════════════════════════════
    DESIGN TOKENS — Tailwind v4 theme
    Generates utility classes automatically
@@ -172,7 +184,7 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: 10;
   height: var(--nav-h);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(255, 255, 255, 0.94);
@@ -464,8 +476,28 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
 }
 
 /* ═══════════════════════════════════════
-   BOTTOM SHEET
+   BOTTOM SHEET — z-index above nav (50)
 ═══════════════════════════════════════ */
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(18, 24, 38, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.sheet-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #FFFFFF;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--sh-lg);
+}
 
 .sheet-handle {
   width: 36px;
@@ -712,4 +744,418 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
 
 .login-submit {
   margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════
+   DASHBOARD — Today screen
+═══════════════════════════════════════ */
+
+/* Motivation card */
+.motivation-card {
+  border-radius: var(--r-lg);
+  padding: 28px 24px 24px;
+  background: linear-gradient(145deg, #6E5CF6 0%, #7D6CF8 55%, #9588F9 100%);
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--sh-brand);
+}
+
+.motivation-card::before {
+  content: '';
+  position: absolute;
+  top: -50px; right: -30px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  pointer-events: none;
+}
+
+.motivation-card::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; left: -30px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+}
+
+.motivation-inner { position: relative; z-index: 1; }
+
+.motivation-greeting {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.80;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.motivation-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+  margin-bottom: 12px;
+}
+
+.motivation-quote {
+  font-size: 13.5px;
+  line-height: 1.6;
+  opacity: 0.78;
+  font-style: italic;
+  margin-bottom: 22px;
+  font-weight: 400;
+}
+
+.motivation-pct-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.motivation-pct {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.motivation-pct-label {
+  font-size: 13px;
+  opacity: 0.72;
+  font-weight: 500;
+}
+
+.motivation-bar {
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.22);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.motivation-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.88);
+}
+
+.motivation-sub {
+  font-size: 12px;
+  opacity: 0.62;
+}
+
+/* Stat grid — 3 cards in a row */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stat-card {
+  background: #FFFFFF;
+  border-radius: var(--r);
+  border: 1px solid var(--bdr);
+  box-shadow: var(--sh-sm);
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.stat-number { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+.stat-label  { font-size: 10px; font-weight: 700; color: #9BA5B4; text-transform: uppercase; letter-spacing: 0.07em; }
+
+/* Section header */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #121826;
+  letter-spacing: -0.3px;
+}
+
+/* Habit item in Today dashboard */
+.habit-row-today {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.habit-check-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(18,24,38,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.habit-check-btn:hover     { border-color: var(--habit-color, #6E5CF6); }
+.habit-check-btn--done     { background: var(--habit-color, #2CC08C); border-color: var(--habit-color, #2CC08C); }
+
+.habit-name-today {
+  font-size: 15px;
+  font-weight: 500;
+  color: #121826;
+  line-height: 1.4;
+  transition: opacity 0.25s;
+}
+
+.habit-name-today--done { text-decoration: line-through; opacity: 0.40; }
+
+.habit-time-today { font-size: 12px; color: #9BA5B4; font-weight: 500; margin-top: 2px; }
+
+/* Priority dot */
+.priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+/* Big progress card */
+.progress-big {
+  background: #FFFFFF;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--bdr);
+  box-shadow: var(--sh-sm);
+  padding: 24px;
+}
+
+.progress-big-pct {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.progress-big-track {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(110,92,246,0.10);
+  overflow: hidden;
+  margin: 16px 0 10px;
+}
+
+.progress-big-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(to right, #6E5CF6, #9588F9);
+}
+
+.progress-big-fill--done { background: linear-gradient(to right, #2CC08C, #3DD5A0); }
+
+/* ═══════════════════════════════════════
+   ESTUDOS — Study screen
+═══════════════════════════════════════ */
+
+/* Header card — indigo gradient (distinct from motivation violet) */
+.study-header-card {
+  border-radius: var(--r-lg);
+  padding: 28px 24px 24px;
+  background: linear-gradient(145deg, #2563EB 0%, #3B82F6 55%, #60A5FA 100%);
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 36px rgba(37,99,235,0.30), 0 2px 12px rgba(37,99,235,0.14);
+}
+
+.study-header-card::before {
+  content: '';
+  position: absolute;
+  top: -50px; right: -30px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  pointer-events: none;
+}
+
+.study-header-card::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; left: -30px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+}
+
+/* Subject card */
+.subject-card {
+  background: #FFFFFF;
+  border-radius: var(--r);
+  border: 1px solid var(--bdr);
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+}
+
+.subject-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 14px;
+}
+
+.subject-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.subject-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #121826;
+  letter-spacing: -0.2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.topic-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--bdr);
+}
+
+.topic-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #121826;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.topic-title--done {
+  text-decoration: line-through;
+  opacity: 0.42;
+}
+
+.topic-time {
+  font-size: 11px;
+  color: #C2CAD8;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* Pomodoro */
+.pomodoro-card {
+  background: #FFFFFF;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--bdr);
+  box-shadow: var(--sh-sm);
+  padding: 24px;
+}
+
+.pomodoro-phase {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  margin-bottom: 12px;
+}
+
+.pomodoro-display {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+  color: #121826;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 16px;
+}
+
+.pomodoro-track {
+  height: 5px;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.pomodoro-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 1s linear;
+}
+
+.pomodoro-btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* Review row */
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--bdr);
+}
+
+.review-row:last-child { border-bottom: none; }
+
+.review-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+/* Study today card (in Hoje) */
+.study-today-card {
+  background: #FFFFFF;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--bdr);
+  box-shadow: var(--sh-sm);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.study-today-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.study-today-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-xs);
+  background: rgba(37,99,235,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563EB;
+  flex-shrink: 0;
 }

@@ -1,5 +1,3 @@
-'use client'
-
 import { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { format, isToday, parseISO, addWeeks, subWeeks } from 'date-fns'
@@ -207,7 +205,7 @@ export default function SemanaPage() {
           {done.length > 0 && (
             <>
               <p className="t-label" style={{ marginBottom: 10, paddingLeft: 2 }}>
-                Concluídas · {done.length}
+                ConcluÃ­das Â· {done.length}
               </p>
               <div className="card-flat" style={{ overflow: 'hidden' }}>
                 {done.map(task => (

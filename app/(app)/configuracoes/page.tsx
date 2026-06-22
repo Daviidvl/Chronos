@@ -1,10 +1,8 @@
-'use client'
-
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X, LogOut, Trash2, Tag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { DEFAULT_CATEGORIES } from '@/lib/utils'
 import type { Category } from '@/types'
 
@@ -14,7 +12,7 @@ const PALETTE = [
 ]
 
 export default function ConfigPage() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [categories, setCategories] = useState<Category[]>([])
   const [userId, setUserId]         = useState('')
   const [newName, setNewName]       = useState('')
@@ -65,7 +63,7 @@ export default function ConfigPage() {
   const logout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    navigate('/login', { replace: true })
   }
 
   return (
