@@ -11,8 +11,11 @@ export function AppLayout() {
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) navigate('/login', { replace: true })
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error || !session) navigate('/login', { replace: true })
+      setLoading(false)
+    }).catch(() => {
+      navigate('/login', { replace: true })
       setLoading(false)
     })
 

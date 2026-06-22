@@ -237,9 +237,10 @@ export default function HojePage() {
   const today = todayISO()
 
   const load = useCallback(async () => {
+    try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { setLoading(false); return }
     setUserId(user.id)
 
     const emailPrefix = user.email?.split('@')[0] ?? ''
@@ -278,7 +279,7 @@ export default function HojePage() {
     setHabits((habitsData as Habit[]) ?? [])
     setHabitLogs((logsData as HabitLog[]) ?? [])
     setStreak(calcStreak((streakData ?? []).map((r: { date: string }) => r.date)))
-    setLoading(false)
+    } catch (e) { console.error('load error:', e) } finally { setLoading(false) }
   }, [today])
 
   useEffect(() => { load() }, [load])
