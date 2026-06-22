@@ -4,7 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? '/Chronos/' : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -19,10 +20,11 @@ export default defineConfig({
         background_color: '#F7F8FC',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: '/Chronos/',
+        scope: '/Chronos/',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/Chronos/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/Chronos/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
         ],
       },
     }),
@@ -32,4 +34,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     },
   },
-})
+}))
