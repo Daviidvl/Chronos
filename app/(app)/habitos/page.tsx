@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Check, Flame, Repeat2 } from 'lucide-react'
+import { Plus, X, Check, Flame, Repeat2, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { todayISO, last7Days } from '@/lib/utils'
 import { useModal } from '@/lib/modal-context'
@@ -13,7 +13,7 @@ const PALETTE = [
   '#8B5CF6', '#EC4899', '#0EA5E9', '#14B8A6',
 ]
 
-/* â”€â”€ Habit Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Habit Card ───────────────────────────────────────── */
 function HabitCard({
   habit, logs, onToggle, onDelete,
 }: {
@@ -52,20 +52,27 @@ function HabitCard({
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Name row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: habit.time ? 2 : 10 }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#121826' }}>
               {habit.name}
             </span>
             {streak >= 2 && (
-              <span
-                className="badge-pill"
-                style={{ background: '#FEF3C7', color: '#D97706' }}
-              >
+              <span className="badge-pill" style={{ background: '#FEF3C7', color: '#D97706' }}>
                 <Flame size={9} />
                 {streak}
               </span>
             )}
           </div>
+
+          {/* Time badge */}
+          {habit.time && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+              <Clock size={10} color="#9BA5B4" />
+              <span style={{ fontSize: 11, color: '#9BA5B4', fontWeight: 600, letterSpacing: '-0.1px' }}>
+                {habit.time}
+              </span>
+            </div>
+          )}
 
           {/* 7-day dots */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
@@ -95,25 +102,18 @@ function HabitCard({
         <button
           onClick={() => onToggle(habit.id, today, !done)}
           style={{
-            width: 40,
-            height: 40,
+            width: 40, height: 40,
             borderRadius: 'var(--r-xs)',
             border: `2px solid ${done ? habit.color : 'var(--bdr-2)'}`,
             background: done ? habit.color : 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            cursor: 'pointer',
-            transition: 'all 0.18s ease',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, cursor: 'pointer', transition: 'all 0.18s ease',
           }}
         >
           <AnimatePresence>
             {done && (
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
+                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 600, damping: 30 }}
               >
                 <Check size={15} strokeWidth={3} color="#fff" />
@@ -131,7 +131,7 @@ function HabitCard({
   )
 }
 
-/* â”€â”€ Add Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Add Sheet ─────────────────────────────────────────── */
 function AddSheet({ onClose, onAdd, userId }: {
   onClose: () => void
   onAdd: (h: Habit) => void
@@ -139,6 +139,7 @@ function AddSheet({ onClose, onAdd, userId }: {
 }) {
   const [name, setName]   = useState('')
   const [color, setColor] = useState(PALETTE[0])
+  const [time, setTime]   = useState('')
   const [saving, setSaving] = useState(false)
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -148,7 +149,7 @@ function AddSheet({ onClose, onAdd, userId }: {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('habits')
-      .insert({ user_id: userId, name: name.trim(), color, active: true })
+      .insert({ user_id: userId, name: name.trim(), color, active: true, time: time || null })
       .select()
       .single()
     if (!error && data) { onAdd(data as Habit); onClose() }
@@ -170,19 +171,30 @@ function AddSheet({ onClose, onAdd, userId }: {
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
-            Novo hÃ¡bito
+            Novo hábito
           </span>
           <button onClick={onClose} className="btn-icon"><X size={16} /></button>
         </div>
 
         <form onSubmit={handleAdd}>
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <input
               autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Ex: Leitura, Treino, MeditaÃ§Ã£o..."
+              placeholder="Ex: Leitura, Treino, Meditação..."
               className="field"
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Horário (opcional)</label>
+            <input
+              type="time"
+              value={time}
+              onChange={e => setTime(e.target.value)}
+              className="field field-sm"
+              style={{ marginTop: 6 }}
             />
           </div>
 
@@ -202,7 +214,7 @@ function AddSheet({ onClose, onAdd, userId }: {
           </div>
 
           <button type="submit" disabled={!name.trim() || saving} className="btn btn-brand">
-            {saving ? 'A guardar...' : 'Criar hÃ¡bito'}
+            {saving ? 'A guardar...' : 'Criar hábito'}
           </button>
         </form>
       </motion.div>
@@ -210,7 +222,7 @@ function AddSheet({ onClose, onAdd, userId }: {
   )
 }
 
-/* â”€â”€ Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Skeleton ───────────────────────────────────────────── */
 function HabitSkeleton() {
   return (
     <div className="card" style={{ padding: '16px 18px' }}>
@@ -230,7 +242,7 @@ function HabitSkeleton() {
   )
 }
 
-/* â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Page ─────────────────────────────────────────────────── */
 export default function HabitosPage() {
   const [habits, setHabits]   = useState<Habit[]>([])
   const [logs, setLogs]       = useState<HabitLog[]>([])
@@ -240,19 +252,20 @@ export default function HabitosPage() {
   const { open: openModal, close: closeModal } = useModal()
 
   const load = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    setUserId(user.id)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+      setUserId(user.id)
 
-    const days = last7Days()
-    const [{ data: habitsData }, { data: logsData }] = await Promise.all([
-      supabase.from('habits').select('*').eq('user_id', user.id).eq('active', true).order('created_at'),
-      supabase.from('habit_logs').select('*').eq('user_id', user.id).in('date', days),
-    ])
-    setHabits((habitsData as Habit[]) ?? [])
-    setLogs((logsData as HabitLog[]) ?? [])
-    setLoading(false)
+      const days = last7Days()
+      const [{ data: habitsData }, { data: logsData }] = await Promise.all([
+        supabase.from('habits').select('*').eq('user_id', user.id).eq('active', true).order('created_at'),
+        supabase.from('habit_logs').select('*').eq('user_id', user.id).in('date', days),
+      ])
+      setHabits((habitsData as Habit[]) ?? [])
+      setLogs((logsData as HabitLog[]) ?? [])
+    } catch (e) { console.error('load error:', e) } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -281,14 +294,13 @@ export default function HabitosPage() {
 
   return (
     <div className="page">
-      {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40 }}
       >
         <div>
-          <h1 className="t-display">HÃ¡bitos</h1>
+          <h1 className="t-display">Hábitos</h1>
           {habits.length > 0 && (
             <p style={{ fontSize: 14, color: '#9BA5B4', marginTop: 6, fontWeight: 400 }}>
               {doneToday} de {habits.length} hoje
@@ -328,7 +340,6 @@ export default function HabitosPage() {
         </div>
       )}
 
-      {/* List */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1, 2, 3].map(i => <HabitSkeleton key={i} />)}
@@ -338,8 +349,8 @@ export default function HabitosPage() {
           <div className="empty-icon" style={{ background: '#D3F9EE', color: '#2CC08C' }}>
             <Repeat2 size={24} />
           </div>
-          <p className="empty-title">Nenhum hÃ¡bito ainda</p>
-          <p className="empty-sub">Cria o teu primeiro hÃ¡bito</p>
+          <p className="empty-title">Nenhum hábito ainda</p>
+          <p className="empty-sub">Cria o teu primeiro hábito</p>
         </motion.div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

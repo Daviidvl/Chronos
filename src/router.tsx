@@ -4,7 +4,7 @@ import LoginPage        from '../app/login/page'
 import HojePage         from '../app/(app)/hoje/page'
 import HabitosPage      from '../app/(app)/habitos/page'
 import EstudosPage      from '../app/(app)/estudos/page'
-import SemanaPage       from '../app/(app)/semana/page'
+import RotinaPage       from '../app/(app)/rotina/page'
 import ConfigPage       from '../app/(app)/configuracoes/page'
 
 // BASE_URL is '/' in dev and '/Chronos/' in production (set by vite.config.ts)
@@ -19,7 +19,7 @@ export const router = createBrowserRouter([
       { path: '/hoje',          element: <HojePage /> },
       { path: '/habitos',       element: <HabitosPage /> },
       { path: '/estudos',       element: <EstudosPage /> },
-      { path: '/semana',        element: <SemanaPage /> },
+      { path: '/rotina',        element: <RotinaPage /> },
       { path: '/configuracoes', element: <ConfigPage /> },
       { path: '*',              element: <Navigate to="/hoje" replace /> },
     ],

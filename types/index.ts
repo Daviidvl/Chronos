@@ -28,6 +28,7 @@ export interface Habit {
   name: string
   color: string
   active: boolean
+  time?: string | null
   created_at: string
 }
 

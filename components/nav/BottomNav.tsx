@@ -1,14 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sun, Repeat2, CalendarDays, Settings, BookOpen } from 'lucide-react'
+import { Sun, Repeat2, AlarmClock, Settings, BookOpen } from 'lucide-react'
 import { useModal } from '@/lib/modal-context'
 
 const ITEMS = [
-  { href: '/hoje',          Icon: Sun,          label: 'Hoje' },
-  { href: '/habitos',       Icon: Repeat2,      label: 'Hábitos' },
-  { href: '/estudos',       Icon: BookOpen,     label: 'Estudos' },
-  { href: '/semana',        Icon: CalendarDays, label: 'Semana' },
-  { href: '/configuracoes', Icon: Settings,     label: 'Config' },
+  { href: '/hoje',          Icon: Sun,        label: 'Hoje' },
+  { href: '/habitos',       Icon: Repeat2,    label: 'Hábitos' },
+  { href: '/estudos',       Icon: BookOpen,   label: 'Estudos' },
+  { href: '/rotina',        Icon: AlarmClock, label: 'Rotina' },
+  { href: '/configuracoes', Icon: Settings,   label: 'Config' },
 ]
 
 export function BottomNav() {
