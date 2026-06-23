@@ -371,7 +371,7 @@ export default function EstudosPage() {
                     >
                       <SubjectCard
                         subject={subject}
-                        topics={topics.filter(t => t.subject_id === subject.id && (t.day_of_week === activeDay || t.day_of_week == null))}
+                        topics={topics.filter(t => t.subject_id === subject.id && t.day_of_week === activeDay)}
                         sessionMinutes={sessionsBySubject(subject.id)}
                         onToggleTopic={toggleTopic}
                         onAddTopic={addTopic}
