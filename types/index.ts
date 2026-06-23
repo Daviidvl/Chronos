@@ -78,6 +78,14 @@ export interface StudySession {
   created_at: string
 }
 
+export interface SubjectSchedule {
+  id: string
+  user_id: string
+  subject_id: string
+  day_of_week: number
+  created_at: string
+}
+
 export interface StudyPlanItem {
   id: string
   user_id: string
