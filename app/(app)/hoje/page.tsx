@@ -290,6 +290,12 @@ export default function HojePage() {
     await supabase.from('tasks').update({ completed: done }).eq('id', id)
   }
 
+  const deleteTask = async (id: string) => {
+    setTasks(ts => ts.filter(t => t.id !== id))
+    const supabase = createClient()
+    await supabase.from('tasks').delete().eq('id', id)
+  }
+
   const toggleHabit = async (habit: Habit, done: boolean) => {
     const supabase = createClient()
     const existing = habitLogs.find(l => l.habit_id === habit.id)
@@ -348,7 +354,7 @@ export default function HojePage() {
 
           <HabitsToday habits={habits} logs={habitLogs} onToggle={toggleHabit} />
 
-          <TasksToday tasks={tasks} onToggle={toggleTask} />
+          <TasksToday tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} />
 
           <ProgressCard
             completed={completedItems}

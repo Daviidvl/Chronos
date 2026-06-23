@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Clock } from 'lucide-react'
+import { Check, Clock, Trash2 } from 'lucide-react'
 import type { Task, Priority } from '@/types'
 import { timeRange } from '@/lib/utils'
 
@@ -14,9 +14,10 @@ const PRIORITY: Record<Priority, { dot: string; label: string }> = {
 interface Props {
   tasks: Task[]
   onToggle: (id: string, done: boolean) => void
+  onDelete: (id: string) => void
 }
 
-export function TasksToday({ tasks, onToggle }: Props) {
+export function TasksToday({ tasks, onToggle, onDelete }: Props) {
   const pending = tasks.filter(t => !t.completed)
   if (pending.length === 0) return null
 
@@ -86,6 +87,15 @@ export function TasksToday({ tasks, onToggle }: Props) {
                     title="Marcar como concluída"
                   >
                     <Check size={10} strokeWidth={3} style={{ opacity: 0.25 }} />
+                  </button>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => onDelete(task.id)}
+                    className="btn-icon danger"
+                    title="Apagar tarefa"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </motion.div>

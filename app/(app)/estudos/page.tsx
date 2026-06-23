@@ -333,6 +333,14 @@ export default function EstudosPage() {
     }
   }
 
+  const deleteSubject = async (id: string) => {
+    const supabase = createClient()
+    await supabase.from('subjects').delete().eq('id', id)
+    setSubjects(ss => ss.filter(s => s.id !== id))
+    setTopics(ts => ts.filter(t => t.subject_id !== id))
+    setSchedules(sc => sc.filter(s => s.subject_id !== id))
+  }
+
   const addToSchedule = async (subjectId: string) => {
     const supabase = createClient()
     const { data } = await supabase
@@ -479,7 +487,8 @@ export default function EstudosPage() {
                         sessionMinutes={sessionsBySubject(subject.id)}
                         onToggleTopic={toggleTopic}
                         onAddTopic={addTopic}
-                        onDelete={() => removeFromDay(subject.id)}
+                        onDelete={deleteSubject}
+                        onRemoveFromDay={() => removeFromDay(subject.id)}
                       />
                     </motion.div>
                   ))}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus } from 'lucide-react'
 import type { Subject, Topic } from '@/types'
 import { formatMinutes } from '@/lib/utils'
 
@@ -13,11 +13,12 @@ interface Props {
   onToggleTopic: (topic: Topic, done: boolean) => void
   onAddTopic: (subjectId: string, title: string, estimatedMinutes: number) => Promise<void>
   onDelete: (id: string) => void
+  onRemoveFromDay?: () => void
 }
 
 export function SubjectCard({
   subject, topics, sessionMinutes,
-  onToggleTopic, onAddTopic, onDelete,
+  onToggleTopic, onAddTopic, onDelete, onRemoveFromDay,
 }: Props) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTopic, setAddingTopic] = useState(false)
@@ -85,9 +86,21 @@ export function SubjectCard({
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
 
+        {onRemoveFromDay && (
+          <button
+            onClick={onRemoveFromDay}
+            className="btn-icon"
+            title="Remover deste dia"
+            style={{ color: '#9BA5B4' }}
+          >
+            <CalendarMinus size={14} />
+          </button>
+        )}
+
         <button
           onClick={() => onDelete(subject.id)}
           className="btn-icon danger"
+          title="Eliminar matéria"
         >
           <Trash2 size={14} />
         </button>
