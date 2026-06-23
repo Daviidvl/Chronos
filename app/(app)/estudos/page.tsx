@@ -320,6 +320,17 @@ export default function EstudosPage() {
       .select('*, subject:subjects(*)')
       .single()
     if (data) setTopics(ts => [...ts, data as Topic])
+    // Auto-create schedule entry if not already there (silently ignores if table doesn't exist)
+    const alreadyScheduled = schedules.some(sc => sc.subject_id === subjectId && sc.day_of_week === activeDay)
+    if (!alreadyScheduled) {
+      try {
+        const { data: sc } = await supabase
+          .from('subject_schedules')
+          .upsert({ user_id: userId, subject_id: subjectId, day_of_week: activeDay }, { ignoreDuplicates: true })
+          .select().maybeSingle()
+        if (sc) setSchedules(prev => [...prev, sc as SubjectSchedule])
+      } catch { /* table may not exist yet */ }
+    }
   }
 
   const deleteSubject = async (id: string) => {
@@ -370,7 +381,10 @@ export default function EstudosPage() {
 
   const dayTopics = topics.filter(t => t.day_of_week === activeDay)
   const scheduledIdsForDay = schedules.filter(sc => sc.day_of_week === activeDay).map(sc => sc.subject_id)
-  const subjectsForDay = subjects.filter(s => scheduledIdsForDay.includes(s.id))
+  // Show subjects that are either explicitly scheduled for this day OR have topics on this day
+  const subjectsForDay = subjects.filter(s =>
+    scheduledIdsForDay.includes(s.id) || dayTopics.some(t => t.subject_id === s.id)
+  )
 
   return (
     <div className="page">
@@ -415,7 +429,7 @@ export default function EstudosPage() {
             <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 2 }}>
               {['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map((d, i) => {
                 const active   = activeDay === i
-                const hasItems = schedules.some(sc => sc.day_of_week === i)
+                const hasItems = schedules.some(sc => sc.day_of_week === i) || topics.some(t => t.day_of_week === i)
                 return (
                   <button
                     key={i}
