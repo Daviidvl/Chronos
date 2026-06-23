@@ -9,7 +9,8 @@ import { StudyStats }   from '@/components/estudos/StudyStats'
 import { SubjectCard }  from '@/components/estudos/SubjectCard'
 import { PomodoroTimer } from '@/components/estudos/PomodoroTimer'
 import { RevisionList } from '@/components/estudos/RevisionList'
-import type { Subject, Topic, StudySession } from '@/types'
+import { WeeklyPlan }   from '@/components/estudos/WeeklyPlan'
+import type { Subject, Topic, StudySession, StudyPlanItem } from '@/types'
 import { format, addDays } from 'date-fns'
 
 const PALETTE = [
@@ -153,14 +154,15 @@ function StudySkeleton() {
 }
 
 export default function EstudosPage() {
-  const [subjects,  setSubjects]  = useState<Subject[]>([])
-  const [topics,    setTopics]    = useState<Topic[]>([])
-  const [sessions,  setSessions]  = useState<StudySession[]>([])
-  const [revisions, setRevisions] = useState<Topic[]>([])
-  const [streak,    setStreak]    = useState(0)
-  const [userId,    setUserId]    = useState('')
-  const [showAdd,   setShowAdd]   = useState(false)
-  const [loading,   setLoading]   = useState(true)
+  const [subjects,   setSubjects]   = useState<Subject[]>([])
+  const [topics,     setTopics]     = useState<Topic[]>([])
+  const [sessions,   setSessions]   = useState<StudySession[]>([])
+  const [revisions,  setRevisions]  = useState<Topic[]>([])
+  const [planItems,  setPlanItems]  = useState<StudyPlanItem[]>([])
+  const [streak,     setStreak]     = useState(0)
+  const [userId,     setUserId]     = useState('')
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [loading,    setLoading]    = useState(true)
 
   const { open: openModal, close: closeModal } = useModal()
 
@@ -184,6 +186,7 @@ export default function EstudosPage() {
       { data: sessionsData },
       { data: revisionsData },
       { data: streakData },
+      { data: planData },
     ] = await Promise.all([
       supabase.from('subjects').select('*').eq('user_id', user.id).order('created_at'),
       supabase.from('topics').select('*, subject:subjects(*)').eq('user_id', user.id).order('created_at'),
@@ -200,6 +203,11 @@ export default function EstudosPage() {
         .select('date')
         .eq('user_id', user.id)
         .gte('date', sixtyAgo),
+      supabase
+        .from('study_plan_items')
+        .select('*, subject:subjects(*)')
+        .eq('user_id', user.id)
+        .order('created_at'),
     ])
 
     setSubjects((subjectsData as Subject[]) ?? [])
@@ -207,6 +215,7 @@ export default function EstudosPage() {
     setSessions((sessionsData as StudySession[]) ?? [])
     setRevisions((revisionsData as Topic[]) ?? [])
     setStreak(calcStreak((streakData ?? []).map((r: { date: string }) => r.date)))
+    setPlanItems((planData as StudyPlanItem[]) ?? [])
     } catch (e) { console.error('load error:', e) } finally { setLoading(false) }
   }, [today])
 
@@ -241,6 +250,16 @@ export default function EstudosPage() {
     setTopics(ts => ts.filter(t => t.subject_id !== id))
   }
 
+  const addPlanItem = (item: StudyPlanItem) => {
+    setPlanItems(prev => [...prev, item])
+  }
+
+  const deletePlanItem = async (id: string) => {
+    setPlanItems(prev => prev.filter(i => i.id !== id))
+    const supabase = createClient()
+    await supabase.from('study_plan_items').delete().eq('id', id)
+  }
+
   const markReviewed = async (topic: Topic) => {
     const next     = nextReviewInterval(topic.review_interval)
     const nextDate = format(addDays(new Date(), next), 'yyyy-MM-dd')
@@ -273,6 +292,14 @@ export default function EstudosPage() {
             todayMinutes={todayMinutes}
             weekMinutes={weekMinutes}
             weekGoalMinutes={weekGoal}
+          />
+
+          <WeeklyPlan
+            items={planItems}
+            subjects={subjects}
+            userId={userId}
+            onAdd={addPlanItem}
+            onDelete={deletePlanItem}
           />
 
           <PomodoroTimer
