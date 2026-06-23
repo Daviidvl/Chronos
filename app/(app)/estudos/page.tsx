@@ -294,13 +294,6 @@ export default function EstudosPage() {
             weekGoalMinutes={weekGoal}
           />
 
-          <WeeklyPlan
-            items={planItems}
-            userId={userId}
-            onAdd={addPlanItem}
-            onDelete={deletePlanItem}
-          />
-
           <PomodoroTimer
             subjects={subjects}
             userId={userId}
@@ -312,7 +305,7 @@ export default function EstudosPage() {
           )}
 
           <div>
-            <div className="section-header">
+            <div className="section-header" style={{ marginBottom: 14 }}>
               <h2 className="section-title">Plano de estudos</h2>
               <button
                 onClick={() => { setShowAdd(true); openModal() }}
@@ -324,8 +317,21 @@ export default function EstudosPage() {
               </button>
             </div>
 
+            {/* Plano semanal por dia — integrado aqui */}
+            <WeeklyPlan
+              items={planItems}
+              userId={userId}
+              onAdd={addPlanItem}
+              onDelete={deletePlanItem}
+            />
+
+            {/* Separador se houver matérias */}
+            {subjects.length > 0 && (
+              <div style={{ height: 1, background: 'var(--bdr-2)', margin: '4px 0 20px' }} />
+            )}
+
             {subjects.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty" style={{ padding: '48px 24px' }}>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty" style={{ padding: '32px 24px' }}>
                 <div className="empty-icon">
                   <BookOpen size={24} />
                 </div>

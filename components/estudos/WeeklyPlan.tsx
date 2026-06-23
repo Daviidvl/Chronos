@@ -112,58 +112,66 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
   const dayItems = items.filter(i => i.day_of_week === activeDay)
 
   return (
-    <div>
-      <div className="section-header" style={{ marginBottom: 14 }}>
-        <h2 className="section-title">Plano semanal</h2>
+    <div style={{ marginBottom: 20 }}>
+      {/* Day tabs + add button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 6, flex: 1, overflowX: 'auto', paddingBottom: 2 }}>
+          {DAYS.map((d, i) => {
+            const active   = activeDay === i
+            const hasItems = items.some(item => item.day_of_week === i)
+            return (
+              <button
+                key={i}
+                onClick={() => setActiveDay(i)}
+                style={{
+                  flexShrink: 0,
+                  height: 32,
+                  padding: '0 12px',
+                  borderRadius: 'var(--r-xs)',
+                  border: `1.5px solid ${active ? '#6E5CF6' : 'var(--bdr-2)'}`,
+                  background: active ? '#6E5CF6' : '#fff',
+                  color: active ? '#fff' : hasItems ? '#121826' : '#9BA5B4',
+                  fontSize: 12,
+                  fontWeight: active ? 700 : hasItems ? 600 : 400,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  fontFamily: 'inherit',
+                  position: 'relative',
+                }}
+              >
+                {d}
+                {hasItems && !active && (
+                  <span style={{
+                    position: 'absolute', top: 4, right: 4,
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: '#6E5CF6',
+                  }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Add button inline */}
         <button
           onClick={() => { setShowAdd(true); openModal() }}
-          className="btn btn-brand"
-          style={{ width: 'auto', minHeight: 36, padding: '0 14px', fontSize: 13 }}
+          style={{
+            flexShrink: 0,
+            height: 32,
+            width: 32,
+            borderRadius: 'var(--r-xs)',
+            border: '1.5px solid var(--bdr-2)',
+            background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#6E5CF6',
+          }}
         >
-          <Plus size={14} strokeWidth={2.5} />
-          Adicionar
+          <Plus size={15} strokeWidth={2.5} />
         </button>
       </div>
 
-      {/* Day tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 2 }}>
-        {DAYS.map((d, i) => {
-          const active   = activeDay === i
-          const hasItems = items.some(item => item.day_of_week === i)
-          return (
-            <button
-              key={i}
-              onClick={() => setActiveDay(i)}
-              style={{
-                flexShrink: 0,
-                height: 34,
-                padding: '0 14px',
-                borderRadius: 'var(--r-xs)',
-                border: `1.5px solid ${active ? '#6E5CF6' : 'var(--bdr-2)'}`,
-                background: active ? '#6E5CF6' : '#fff',
-                color: active ? '#fff' : hasItems ? '#121826' : '#9BA5B4',
-                fontSize: 12,
-                fontWeight: active ? 700 : hasItems ? 600 : 400,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                fontFamily: 'inherit',
-                position: 'relative',
-              }}
-            >
-              {d}
-              {hasItems && !active && (
-                <span style={{
-                  position: 'absolute', top: 5, right: 5,
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: '#6E5CF6',
-                }} />
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Items */}
+      {/* Items for active day */}
       <AnimatePresence mode="popLayout">
         {dayItems.length === 0 ? (
           <motion.p
@@ -171,7 +179,7 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ fontSize: 13, color: '#C2CAD8', padding: '12px 0', textAlign: 'center' }}
+            style={{ fontSize: 13, color: '#C2CAD8', padding: '10px 0 4px', textAlign: 'center' }}
           >
             Nada planeado para {DAYS_FULL[activeDay].toLowerCase()}
           </motion.p>
@@ -192,31 +200,26 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
                 exit={{ opacity: 0, scale: 0.97 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 14px',
+                  padding: '10px 14px',
                   borderRadius: 'var(--r)',
                   border: '1.5px solid var(--bdr-2)',
                   background: '#fff',
                 }}
               >
-                {/* Color accent */}
                 <div style={{
                   width: 3, borderRadius: 99, alignSelf: 'stretch',
                   background: '#6E5CF6', flexShrink: 0,
                 }} />
-
-                {/* Text */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: '#121826', margin: 0 }}>
                     {item.title}
                   </p>
                   {item.content && (
-                    <p style={{ fontSize: 13, color: '#9BA5B4', margin: '3px 0 0' }}>
+                    <p style={{ fontSize: 13, color: '#9BA5B4', margin: '2px 0 0' }}>
                       {item.content}
                     </p>
                   )}
                 </div>
-
-                {/* Delete */}
                 <button onClick={() => onDelete(item.id)} className="btn-icon danger" style={{ flexShrink: 0 }}>
                   <X size={13} />
                 </button>
