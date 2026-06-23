@@ -163,6 +163,7 @@ export default function EstudosPage() {
   const [userId,     setUserId]     = useState('')
   const [showAdd,    setShowAdd]    = useState(false)
   const [loading,    setLoading]    = useState(true)
+  const [activeDay,  setActiveDay]  = useState(() => (new Date().getDay() + 6) % 7)
 
   const { open: openModal, close: closeModal } = useModal()
 
@@ -237,7 +238,7 @@ export default function EstudosPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('topics')
-      .insert({ user_id: userId, subject_id: subjectId, title, estimated_minutes: estimatedMinutes })
+      .insert({ user_id: userId, subject_id: subjectId, title, estimated_minutes: estimatedMinutes, day_of_week: activeDay })
       .select('*, subject:subjects(*)')
       .single()
     if (data) setTopics(ts => [...ts, data as Topic])
@@ -327,6 +328,8 @@ export default function EstudosPage() {
             <WeeklyPlan
               items={planItems}
               userId={userId}
+              activeDay={activeDay}
+              onDayChange={setActiveDay}
               onAdd={addPlanItem}
               onToggle={togglePlanItem}
               onDelete={deletePlanItem}
@@ -368,7 +371,7 @@ export default function EstudosPage() {
                     >
                       <SubjectCard
                         subject={subject}
-                        topics={topics.filter(t => t.subject_id === subject.id)}
+                        topics={topics.filter(t => t.subject_id === subject.id && (t.day_of_week === activeDay || t.day_of_week == null))}
                         sessionMinutes={sessionsBySubject(subject.id)}
                         onToggleTopic={toggleTopic}
                         onAddTopic={addTopic}

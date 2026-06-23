@@ -99,16 +99,16 @@ function AddPlanSheet({ day, userId, onClose, onAdd }: {
 }
 
 /* ── Main component ─────────────────────────────────────── */
-export function WeeklyPlan({ items, userId, onAdd, onToggle, onDelete }: {
+export function WeeklyPlan({ items, userId, activeDay, onDayChange, onAdd, onToggle, onDelete }: {
   items: StudyPlanItem[]
   userId: string
+  activeDay: number
+  onDayChange: (day: number) => void
   onAdd: (item: StudyPlanItem) => void
   onToggle: (id: string, done: boolean) => void
   onDelete: (id: string) => void
 }) {
-  const todayDow = (new Date().getDay() + 6) % 7
-  const [activeDay, setActiveDay] = useState(todayDow)
-  const [showAdd,   setShowAdd]   = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
   const { open: openModal, close: closeModal } = useModal()
 
   const dayItems = items.filter(i => i.day_of_week === activeDay)
@@ -128,7 +128,7 @@ export function WeeklyPlan({ items, userId, onAdd, onToggle, onDelete }: {
             return (
               <button
                 key={i}
-                onClick={() => setActiveDay(i)}
+                onClick={() => onDayChange(i)}
                 style={{
                   flexShrink: 0,
                   height: 32,

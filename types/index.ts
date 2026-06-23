@@ -64,6 +64,7 @@ export interface Topic {
   completed_at: string | null
   review_date: string | null
   review_interval: number | null
+  day_of_week: number | null
   created_at: string
   subject?: Subject
 }
