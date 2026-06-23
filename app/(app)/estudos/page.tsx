@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, BookOpen } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { todayISO, calcStreak, nextReviewInterval } from '@/lib/utils'
 import { useModal } from '@/lib/modal-context'
@@ -333,14 +333,6 @@ export default function EstudosPage() {
     }
   }
 
-  const deleteSubject = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from('subjects').delete().eq('id', id)
-    setSubjects(ss => ss.filter(s => s.id !== id))
-    setTopics(ts => ts.filter(t => t.subject_id !== id))
-    setSchedules(sc => sc.filter(s => s.subject_id !== id))
-  }
-
   const addToSchedule = async (subjectId: string) => {
     const supabase = createClient()
     const { data } = await supabase
@@ -352,13 +344,21 @@ export default function EstudosPage() {
   }
 
   const removeFromDay = async (subjectId: string) => {
+    const topicIds = topics
+      .filter(t => t.subject_id === subjectId && t.day_of_week === activeDay)
+      .map(t => t.id)
+
     setSchedules(prev => prev.filter(sc => !(sc.subject_id === subjectId && sc.day_of_week === activeDay)))
+    setTopics(prev => prev.filter(t => !(t.subject_id === subjectId && t.day_of_week === activeDay)))
+
     const supabase = createClient()
-    await supabase.from('subject_schedules')
-      .delete()
-      .eq('user_id', userId)
-      .eq('subject_id', subjectId)
-      .eq('day_of_week', activeDay)
+    await Promise.all([
+      supabase.from('subject_schedules')
+        .delete().eq('user_id', userId).eq('subject_id', subjectId).eq('day_of_week', activeDay),
+      topicIds.length > 0
+        ? supabase.from('topics').delete().in('id', topicIds)
+        : Promise.resolve(),
+    ])
   }
 
   const markReviewed = async (topic: Topic) => {
