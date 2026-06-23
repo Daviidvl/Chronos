@@ -254,6 +254,12 @@ export default function EstudosPage() {
     setPlanItems(prev => [...prev, item])
   }
 
+  const togglePlanItem = async (id: string, done: boolean) => {
+    setPlanItems(prev => prev.map(i => i.id === id ? { ...i, completed: done } : i))
+    const supabase = createClient()
+    await supabase.from('study_plan_items').update({ completed: done }).eq('id', id)
+  }
+
   const deletePlanItem = async (id: string) => {
     setPlanItems(prev => prev.filter(i => i.id !== id))
     const supabase = createClient()
@@ -322,6 +328,7 @@ export default function EstudosPage() {
               items={planItems}
               userId={userId}
               onAdd={addPlanItem}
+              onToggle={togglePlanItem}
               onDelete={deletePlanItem}
             />
 

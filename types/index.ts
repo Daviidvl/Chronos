@@ -83,5 +83,6 @@ export interface StudyPlanItem {
   day_of_week: number
   title: string
   content: string | null
+  completed: boolean
   created_at: string
 }

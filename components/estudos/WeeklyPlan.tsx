@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useModal } from '@/lib/modal-context'
 import type { StudyPlanItem } from '@/types'
@@ -34,6 +34,7 @@ function AddPlanSheet({ day, userId, onClose, onAdd }: {
         day_of_week: day,
         title:       title.trim(),
         content:     content.trim() || null,
+        completed:   false,
       })
       .select()
       .single()
@@ -98,10 +99,11 @@ function AddPlanSheet({ day, userId, onClose, onAdd }: {
 }
 
 /* ── Main component ─────────────────────────────────────── */
-export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
+export function WeeklyPlan({ items, userId, onAdd, onToggle, onDelete }: {
   items: StudyPlanItem[]
   userId: string
   onAdd: (item: StudyPlanItem) => void
+  onToggle: (id: string, done: boolean) => void
   onDelete: (id: string) => void
 }) {
   const todayDow = (new Date().getDay() + 6) % 7
@@ -110,6 +112,9 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
   const { open: openModal, close: closeModal } = useModal()
 
   const dayItems = items.filter(i => i.day_of_week === activeDay)
+  const pending   = dayItems.filter(i => !i.completed)
+  const done      = dayItems.filter(i => i.completed)
+  const sorted    = [...pending, ...done]
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -119,6 +124,7 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
           {DAYS.map((d, i) => {
             const active   = activeDay === i
             const hasItems = items.some(item => item.day_of_week === i)
+            const allDone  = hasItems && items.filter(item => item.day_of_week === i).every(item => item.completed)
             return (
               <button
                 key={i}
@@ -129,8 +135,8 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
                   padding: '0 12px',
                   borderRadius: 'var(--r-xs)',
                   border: `1.5px solid ${active ? '#6E5CF6' : 'var(--bdr-2)'}`,
-                  background: active ? '#6E5CF6' : '#fff',
-                  color: active ? '#fff' : hasItems ? '#121826' : '#9BA5B4',
+                  background: active ? '#6E5CF6' : allDone ? '#F0FDF4' : '#fff',
+                  color: active ? '#fff' : allDone ? '#2CC08C' : hasItems ? '#121826' : '#9BA5B4',
                   fontSize: 12,
                   fontWeight: active ? 700 : hasItems ? 600 : 400,
                   cursor: 'pointer',
@@ -140,7 +146,7 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
                 }}
               >
                 {d}
-                {hasItems && !active && (
+                {hasItems && !active && !allDone && (
                   <span style={{
                     position: 'absolute', top: 4, right: 4,
                     width: 4, height: 4, borderRadius: '50%',
@@ -152,33 +158,27 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
           })}
         </div>
 
-        {/* Add button inline */}
         <button
           onClick={() => { setShowAdd(true); openModal() }}
           style={{
-            flexShrink: 0,
-            height: 32,
-            width: 32,
+            flexShrink: 0, height: 32, width: 32,
             borderRadius: 'var(--r-xs)',
             border: '1.5px solid var(--bdr-2)',
             background: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            color: '#6E5CF6',
+            cursor: 'pointer', color: '#6E5CF6',
           }}
         >
           <Plus size={15} strokeWidth={2.5} />
         </button>
       </div>
 
-      {/* Items for active day */}
+      {/* Items */}
       <AnimatePresence mode="popLayout">
-        {dayItems.length === 0 ? (
+        {sorted.length === 0 ? (
           <motion.p
             key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ fontSize: 13, color: '#C2CAD8', padding: '10px 0 4px', textAlign: 'center' }}
           >
             Nada planeado para {DAYS_FULL[activeDay].toLowerCase()}
@@ -186,12 +186,10 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
         ) : (
           <motion.div
             key={activeDay}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
           >
-            {dayItems.map(item => (
+            {sorted.map(item => (
               <motion.div
                 key={item.id}
                 layout
@@ -202,24 +200,63 @@ export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px',
                   borderRadius: 'var(--r)',
-                  border: '1.5px solid var(--bdr-2)',
-                  background: '#fff',
+                  border: `1.5px solid ${item.completed ? '#E8F5E9' : 'var(--bdr-2)'}`,
+                  background: item.completed ? '#F9FFF9' : '#fff',
+                  transition: 'all 0.2s',
                 }}
               >
+                {/* Check button */}
+                <button
+                  onClick={() => onToggle(item.id, !item.completed)}
+                  style={{
+                    width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                    border: `2px solid ${item.completed ? '#2CC08C' : 'var(--bdr-2)'}`,
+                    background: item.completed ? '#2CC08C' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', transition: 'all 0.18s',
+                  }}
+                >
+                  <AnimatePresence>
+                    {item.completed && (
+                      <motion.div
+                        initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                        transition={{ type: 'spring', stiffness: 600, damping: 30 }}
+                      >
+                        <Check size={12} strokeWidth={3} color="#fff" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </button>
+
+                {/* Left accent */}
                 <div style={{
                   width: 3, borderRadius: 99, alignSelf: 'stretch',
-                  background: '#6E5CF6', flexShrink: 0,
+                  background: item.completed ? '#2CC08C' : '#6E5CF6', flexShrink: 0,
                 }} />
+
+                {/* Text */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#121826', margin: 0 }}>
+                  <p style={{
+                    fontSize: 14, fontWeight: 700, margin: 0,
+                    color: item.completed ? '#9BA5B4' : '#121826',
+                    textDecoration: item.completed ? 'line-through' : 'none',
+                    textDecorationColor: '#C2CAD8',
+                    transition: 'all 0.2s',
+                  }}>
                     {item.title}
                   </p>
                   {item.content && (
-                    <p style={{ fontSize: 13, color: '#9BA5B4', margin: '2px 0 0' }}>
+                    <p style={{
+                      fontSize: 13, margin: '2px 0 0',
+                      color: item.completed ? '#C2CAD8' : '#9BA5B4',
+                      transition: 'all 0.2s',
+                    }}>
                       {item.content}
                     </p>
                   )}
                 </div>
+
+                {/* Delete */}
                 <button onClick={() => onDelete(item.id)} className="btn-icon danger" style={{ flexShrink: 0 }}>
                   <X size={13} />
                 </button>
