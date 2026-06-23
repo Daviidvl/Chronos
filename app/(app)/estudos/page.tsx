@@ -285,6 +285,14 @@ export default function EstudosPage() {
     sessions.filter(s => s.subject_id === subjectId)
       .reduce((sum, s) => sum + s.duration_minutes, 0)
 
+  const dayTopics = topics.filter(t => t.day_of_week === activeDay)
+  const hasContentForDay = dayTopics.length > 0
+  // When day has content: show only subjects with topics for this day
+  // When day is empty: show all subjects so user can add content
+  const subjectsForDay = hasContentForDay
+    ? subjects.filter(s => dayTopics.some(t => t.subject_id === s.id))
+    : subjects
+
   return (
     <div className="page">
       {loading ? (
@@ -361,7 +369,7 @@ export default function EstudosPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <AnimatePresence mode="popLayout">
-                  {subjects.map(subject => (
+                  {subjectsForDay.map(subject => (
                     <motion.div
                       key={subject.id}
                       layout
@@ -371,7 +379,7 @@ export default function EstudosPage() {
                     >
                       <SubjectCard
                         subject={subject}
-                        topics={topics.filter(t => t.subject_id === subject.id && t.day_of_week === activeDay)}
+                        topics={dayTopics.filter(t => t.subject_id === subject.id)}
                         sessionMinutes={sessionsBySubject(subject.id)}
                         onToggleTopic={toggleTopic}
                         onAddTopic={addTopic}
