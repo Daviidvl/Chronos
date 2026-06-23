@@ -3,41 +3,43 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useModal } from '@/lib/modal-context'
-import type { StudyPlanItem, Subject } from '@/types'
+import type { StudyPlanItem } from '@/types'
 
-const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+const DAYS      = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 const DAYS_FULL = [
   'Segunda-feira', 'Terça-feira', 'Quarta-feira',
   'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo',
 ]
 
 /* ── Add Sheet ─────────────────────────────────────────── */
-function AddPlanSheet({ day, subjects, userId, onClose, onAdd }: {
+function AddPlanSheet({ day, userId, onClose, onAdd }: {
   day: number
-  subjects: Subject[]
   userId: string
   onClose: () => void
   onAdd: (item: StudyPlanItem) => void
 }) {
-  const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '')
-  const [note, setNote]           = useState('')
-  const [saving, setSaving]       = useState(false)
+  const [title,   setTitle]   = useState('')
+  const [content, setContent] = useState('')
+  const [saving,  setSaving]  = useState(false)
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!subjectId) return
+    if (!title.trim()) return
     setSaving(true)
     const supabase = createClient()
     const { data, error } = await supabase
       .from('study_plan_items')
-      .insert({ user_id: userId, day_of_week: day, subject_id: subjectId, note: note.trim() || null })
-      .select('*, subject:subjects(*)')
+      .insert({
+        user_id:     userId,
+        day_of_week: day,
+        title:       title.trim(),
+        content:     content.trim() || null,
+      })
+      .select()
       .single()
     if (!error && data) { onAdd(data as StudyPlanItem); onClose() }
     setSaving(false)
   }
-
-  const selected = subjects.find(s => s.id === subjectId)
 
   return (
     <>
@@ -53,93 +55,58 @@ function AddPlanSheet({ day, subjects, userId, onClose, onAdd }: {
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
-            Adicionar a {DAYS_FULL[day]}
+            {DAYS_FULL[day]}
           </span>
           <button onClick={onClose} className="btn-icon"><X size={16} /></button>
         </div>
 
-        {subjects.length === 0 ? (
-          <p style={{ fontSize: 14, color: '#9BA5B4', textAlign: 'center', padding: '24px 0' }}>
-            Cria uma matéria primeiro no plano de estudos.
-          </p>
-        ) : (
-          <form onSubmit={handleAdd}>
-            {/* Subject picker */}
-            <div style={{ marginBottom: 20 }}>
-              <label className="form-label">Matéria</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                {subjects.map(s => {
-                  const active = subjectId === s.id
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setSubjectId(s.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '10px 14px',
-                        borderRadius: 'var(--r)',
-                        border: `1.5px solid ${active ? s.color + '80' : 'var(--bdr-2)'}`,
-                        background: active ? s.color + '10' : '#fff',
-                        cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 8,
-                        background: s.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0,
-                      }}>
-                        {s.icon}
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: active ? s.color : '#121826' }}>
-                        {s.name}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+        <form onSubmit={handleAdd}>
+          <div style={{ marginBottom: 14 }}>
+            <label className="form-label">Matéria</label>
+            <input
+              autoFocus
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Ex: POO - JAVA, Cálculo, Inglês…"
+              className="field"
+              style={{ marginTop: 6 }}
+            />
+          </div>
 
-            {/* Note */}
-            <div style={{ marginBottom: 28 }}>
-              <label className="form-label">Conteúdo (opcional)</label>
-              <input
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder={`Ex: Capítulo 3, Exercícios 1-10…`}
-                className="field"
-                style={{ marginTop: 6 }}
-              />
-            </div>
+          <div style={{ marginBottom: 28 }}>
+            <label className="form-label">Conteúdo</label>
+            <input
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              placeholder="Ex: Aula 124, 125, 126, 127"
+              className="field"
+              style={{ marginTop: 6 }}
+            />
+          </div>
 
-            <button
-              type="submit"
-              disabled={!subjectId || saving}
-              className="btn btn-brand"
-              style={{ background: selected?.color }}
-            >
-              {saving ? 'A guardar…' : `Adicionar ${selected?.name ?? ''}`}
-            </button>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={!title.trim() || saving}
+            className="btn btn-brand"
+          >
+            {saving ? 'A guardar…' : 'Adicionar'}
+          </button>
+        </form>
       </motion.div>
     </>
   )
 }
 
 /* ── Main component ─────────────────────────────────────── */
-export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
+export function WeeklyPlan({ items, userId, onAdd, onDelete }: {
   items: StudyPlanItem[]
-  subjects: Subject[]
   userId: string
   onAdd: (item: StudyPlanItem) => void
   onDelete: (id: string) => void
 }) {
-  const todayDow = (new Date().getDay() + 6) % 7 // 0=Mon … 6=Sun
+  const todayDow = (new Date().getDay() + 6) % 7
   const [activeDay, setActiveDay] = useState(todayDow)
-  const [showAdd, setShowAdd]     = useState(false)
+  const [showAdd,   setShowAdd]   = useState(false)
   const { open: openModal, close: closeModal } = useModal()
 
   const dayItems = items.filter(i => i.day_of_week === activeDay)
@@ -161,8 +128,8 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
       {/* Day tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 2 }}>
         {DAYS.map((d, i) => {
-          const active    = activeDay === i
-          const hasItems  = items.some(item => item.day_of_week === i)
+          const active   = activeDay === i
+          const hasItems = items.some(item => item.day_of_week === i)
           return (
             <button
               key={i}
@@ -170,7 +137,7 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
               style={{
                 flexShrink: 0,
                 height: 34,
-                padding: '0 12px',
+                padding: '0 14px',
                 borderRadius: 'var(--r-xs)',
                 border: `1.5px solid ${active ? '#6E5CF6' : 'var(--bdr-2)'}`,
                 background: active ? '#6E5CF6' : '#fff',
@@ -186,7 +153,7 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
               {d}
               {hasItems && !active && (
                 <span style={{
-                  position: 'absolute', top: 4, right: 4,
+                  position: 'absolute', top: 5, right: 5,
                   width: 5, height: 5, borderRadius: '50%',
                   background: '#6E5CF6',
                 }} />
@@ -196,7 +163,7 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
         })}
       </div>
 
-      {/* Day items */}
+      {/* Items */}
       <AnimatePresence mode="popLayout">
         {dayItems.length === 0 ? (
           <motion.p
@@ -204,9 +171,9 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ fontSize: 13, color: '#C2CAD8', padding: '16px 0', textAlign: 'center' }}
+            style={{ fontSize: 13, color: '#C2CAD8', padding: '12px 0', textAlign: 'center' }}
           >
-            Nenhum conteúdo para {DAYS_FULL[activeDay].toLowerCase()}
+            Nada planeado para {DAYS_FULL[activeDay].toLowerCase()}
           </motion.p>
         ) : (
           <motion.div
@@ -216,54 +183,45 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
             exit={{ opacity: 0 }}
             style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
           >
-            {dayItems.map(item => {
-              const subj = item.subject ?? subjects.find(s => s.id === item.subject_id)
-              return (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 14px',
-                    borderRadius: 'var(--r)',
-                    border: '1.5px solid var(--bdr-2)',
-                    background: '#fff',
-                  }}
-                >
-                  {/* Subject icon */}
-                  {subj && (
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 9,
-                      background: subj.color,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0,
-                    }}>
-                      {subj.icon}
-                    </div>
-                  )}
+            {dayItems.map(item => (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 14px',
+                  borderRadius: 'var(--r)',
+                  border: '1.5px solid var(--bdr-2)',
+                  background: '#fff',
+                }}
+              >
+                {/* Color accent */}
+                <div style={{
+                  width: 3, borderRadius: 99, alignSelf: 'stretch',
+                  background: '#6E5CF6', flexShrink: 0,
+                }} />
 
-                  {/* Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#121826', margin: 0 }}>
-                      {subj?.name ?? '—'}
+                {/* Text */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#121826', margin: 0 }}>
+                    {item.title}
+                  </p>
+                  {item.content && (
+                    <p style={{ fontSize: 13, color: '#9BA5B4', margin: '3px 0 0' }}>
+                      {item.content}
                     </p>
-                    {item.note && (
-                      <p style={{ fontSize: 12, color: '#9BA5B4', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.note}
-                      </p>
-                    )}
-                  </div>
+                  )}
+                </div>
 
-                  {/* Delete */}
-                  <button onClick={() => onDelete(item.id)} className="btn-icon danger" style={{ flexShrink: 0 }}>
-                    <X size={13} />
-                  </button>
-                </motion.div>
-              )
-            })}
+                {/* Delete */}
+                <button onClick={() => onDelete(item.id)} className="btn-icon danger" style={{ flexShrink: 0 }}>
+                  <X size={13} />
+                </button>
+              </motion.div>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
@@ -272,7 +230,6 @@ export function WeeklyPlan({ items, subjects, userId, onAdd, onDelete }: {
         {showAdd && (
           <AddPlanSheet
             day={activeDay}
-            subjects={subjects}
             userId={userId}
             onClose={() => { setShowAdd(false); closeModal() }}
             onAdd={onAdd}

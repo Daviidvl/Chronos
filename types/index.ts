@@ -81,8 +81,7 @@ export interface StudyPlanItem {
   id: string
   user_id: string
   day_of_week: number
-  subject_id: string
-  note: string | null
+  title: string
+  content: string | null
   created_at: string
-  subject?: Subject
 }

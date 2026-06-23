@@ -205,7 +205,7 @@ export default function EstudosPage() {
         .gte('date', sixtyAgo),
       supabase
         .from('study_plan_items')
-        .select('*, subject:subjects(*)')
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at'),
     ])
@@ -296,7 +296,6 @@ export default function EstudosPage() {
 
           <WeeklyPlan
             items={planItems}
-            subjects={subjects}
             userId={userId}
             onAdd={addPlanItem}
             onDelete={deletePlanItem}
