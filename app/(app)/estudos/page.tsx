@@ -9,8 +9,7 @@ import { StudyStats }   from '@/components/estudos/StudyStats'
 import { SubjectCard }  from '@/components/estudos/SubjectCard'
 import { PomodoroTimer } from '@/components/estudos/PomodoroTimer'
 import { RevisionList } from '@/components/estudos/RevisionList'
-import { WeeklyPlan }   from '@/components/estudos/WeeklyPlan'
-import type { Subject, Topic, StudySession, StudyPlanItem } from '@/types'
+import type { Subject, Topic, StudySession } from '@/types'
 import { format, addDays } from 'date-fns'
 
 const PALETTE = [
@@ -158,7 +157,6 @@ export default function EstudosPage() {
   const [topics,     setTopics]     = useState<Topic[]>([])
   const [sessions,   setSessions]   = useState<StudySession[]>([])
   const [revisions,  setRevisions]  = useState<Topic[]>([])
-  const [planItems,  setPlanItems]  = useState<StudyPlanItem[]>([])
   const [streak,     setStreak]     = useState(0)
   const [userId,     setUserId]     = useState('')
   const [showAdd,    setShowAdd]    = useState(false)
@@ -187,7 +185,6 @@ export default function EstudosPage() {
       { data: sessionsData },
       { data: revisionsData },
       { data: streakData },
-      { data: planData },
     ] = await Promise.all([
       supabase.from('subjects').select('*').eq('user_id', user.id).order('created_at'),
       supabase.from('topics').select('*, subject:subjects(*)').eq('user_id', user.id).order('created_at'),
@@ -204,11 +201,6 @@ export default function EstudosPage() {
         .select('date')
         .eq('user_id', user.id)
         .gte('date', sixtyAgo),
-      supabase
-        .from('study_plan_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at'),
     ])
 
     setSubjects((subjectsData as Subject[]) ?? [])
@@ -216,7 +208,6 @@ export default function EstudosPage() {
     setSessions((sessionsData as StudySession[]) ?? [])
     setRevisions((revisionsData as Topic[]) ?? [])
     setStreak(calcStreak((streakData ?? []).map((r: { date: string }) => r.date)))
-    setPlanItems((planData as StudyPlanItem[]) ?? [])
     } catch (e) { console.error('load error:', e) } finally { setLoading(false) }
   }, [today])
 
@@ -249,22 +240,6 @@ export default function EstudosPage() {
     await supabase.from('subjects').delete().eq('id', id)
     setSubjects(ss => ss.filter(s => s.id !== id))
     setTopics(ts => ts.filter(t => t.subject_id !== id))
-  }
-
-  const addPlanItem = (item: StudyPlanItem) => {
-    setPlanItems(prev => [...prev, item])
-  }
-
-  const togglePlanItem = async (id: string, done: boolean) => {
-    setPlanItems(prev => prev.map(i => i.id === id ? { ...i, completed: done } : i))
-    const supabase = createClient()
-    await supabase.from('study_plan_items').update({ completed: done }).eq('id', id)
-  }
-
-  const deletePlanItem = async (id: string) => {
-    setPlanItems(prev => prev.filter(i => i.id !== id))
-    const supabase = createClient()
-    await supabase.from('study_plan_items').delete().eq('id', id)
   }
 
   const markReviewed = async (topic: Topic) => {
@@ -332,31 +307,41 @@ export default function EstudosPage() {
               </button>
             </div>
 
-            {/* Plano semanal por dia — integrado aqui */}
-            <WeeklyPlan
-              items={planItems}
-              userId={userId}
-              activeDay={activeDay}
-              onDayChange={setActiveDay}
-              onAdd={addPlanItem}
-              onToggle={togglePlanItem}
-              onDelete={deletePlanItem}
-            />
+            {/* Abas de dia */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 2 }}>
+              {['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map((d, i) => {
+                const active   = activeDay === i
+                const hasItems = topics.some(t => t.day_of_week === i)
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActiveDay(i)}
+                    style={{
+                      flexShrink: 0, height: 32, padding: '0 12px',
+                      borderRadius: 'var(--r-xs)',
+                      border: `1.5px solid ${active ? '#6E5CF6' : 'var(--bdr-2)'}`,
+                      background: active ? '#6E5CF6' : '#fff',
+                      color: active ? '#fff' : hasItems ? '#121826' : '#9BA5B4',
+                      fontSize: 12, fontWeight: active ? 700 : hasItems ? 600 : 400,
+                      cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
+                      position: 'relative',
+                    }}
+                  >
+                    {d}
+                    {hasItems && !active && (
+                      <span style={{
+                        position: 'absolute', top: 4, right: 4,
+                        width: 4, height: 4, borderRadius: '50%', background: '#6E5CF6',
+                      }} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
 
-            {/* Separador se houver matérias */}
-            {subjects.length > 0 && (
-              <div style={{ height: 1, background: 'var(--bdr-2)', margin: '4px 0 20px' }} />
-            )}
-
+            {/* Matérias do dia */}
             {subjects.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty" style={{ padding: '32px 24px' }}>
-                <div className="empty-icon">
-                  <BookOpen size={24} />
-                </div>
-                <p className="empty-title">Sem matérias ainda</p>
-                <p className="empty-sub" style={{ marginBottom: 20 }}>
-                  Adiciona a primeira matéria para começar o plano de estudos.
-                </p>
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <button
                   onClick={() => { setShowAdd(true); openModal() }}
                   className="btn btn-brand"
@@ -365,30 +350,54 @@ export default function EstudosPage() {
                   <Plus size={15} strokeWidth={2.5} />
                   Adicionar matéria
                 </button>
-              </motion.div>
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <AnimatePresence mode="popLayout">
-                  {subjectsForDay.map(subject => (
-                    <motion.div
-                      key={subject.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.97 }}
-                    >
+              <AnimatePresence mode="popLayout">
+                {subjectsForDay.length > 0 ? (
+                  <motion.div
+                    key={activeDay}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+                  >
+                    {subjectsForDay.map(subject => (
+                      <motion.div
+                        key={subject.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.97 }}
+                      >
+                        <SubjectCard
+                          subject={subject}
+                          topics={dayTopics.filter(t => t.subject_id === subject.id)}
+                          sessionMinutes={sessionsBySubject(subject.id)}
+                          onToggleTopic={toggleTopic}
+                          onAddTopic={addTopic}
+                          onDelete={deleteSubject}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`empty-${activeDay}`}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                  >
+                    {subjects.map(s => (
                       <SubjectCard
-                        subject={subject}
-                        topics={dayTopics.filter(t => t.subject_id === subject.id)}
-                        sessionMinutes={sessionsBySubject(subject.id)}
+                        key={s.id}
+                        subject={s}
+                        topics={[]}
+                        sessionMinutes={0}
                         onToggleTopic={toggleTopic}
                         onAddTopic={addTopic}
                         onDelete={deleteSubject}
                       />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             )}
           </div>
         </div>
