@@ -26,8 +26,10 @@ export function SubjectCard({
   const [topicMins, setTopicMins]   = useState('30')
   const [saving, setSaving]         = useState(false)
 
-  const completed = topics.filter(t => t.completed).length
-  const pct       = topics.length > 0 ? Math.round((completed / topics.length) * 100) : 0
+  const completed        = topics.filter(t => t.completed).length
+  const pct              = topics.length > 0 ? Math.round((completed / topics.length) * 100) : 0
+  const completedMins    = topics.filter(t => t.completed).reduce((s, t) => s + t.estimated_minutes, 0)
+  const totalMins        = topics.reduce((s, t) => s + t.estimated_minutes, 0)
 
   const handleAddTopic = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,7 +64,7 @@ export function SubjectCard({
           <p style={{ fontSize: 12, color: '#9BA5B4', marginTop: 1 }}>
             {topics.length === 0
               ? 'Sem conteúdos'
-              : `${completed}/${topics.length} · ${formatMinutes(sessionMinutes)} estudados`}
+              : `${completed}/${topics.length} · ${formatMinutes(completedMins)}/${formatMinutes(totalMins)}`}
           </p>
         </div>
 

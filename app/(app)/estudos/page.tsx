@@ -378,10 +378,12 @@ export default function EstudosPage() {
     setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, review_interval: next, review_date: nextDate } : t))
   }
 
-  const todayMinutes  = sessions.reduce((sum, s) => sum + s.duration_minutes, 0)
-  const goalMinutes   = subjects.reduce((sum, s) => sum + s.daily_goal_minutes, 0)
-  const weekMinutes   = todayMinutes
-  const weekGoal      = goalMinutes * 5
+  const todayDayOfWeek = (new Date().getDay() + 6) % 7
+  const todayTopics    = topics.filter(t => t.day_of_week === todayDayOfWeek)
+  const completedTodayMinutes = todayTopics.filter(t => t.completed).reduce((sum, t) => sum + t.estimated_minutes, 0)
+  const totalTodayMinutes     = todayTopics.reduce((sum, t) => sum + t.estimated_minutes, 0)
+  const pomodoroMinutes       = sessions.reduce((sum, s) => sum + s.duration_minutes, 0)
+  const weekGoal              = 0
 
   const sessionsBySubject = (subjectId: string) =>
     sessions.filter(s => s.subject_id === subjectId)
@@ -401,12 +403,12 @@ export default function EstudosPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-          <StudyHeader todayMinutes={todayMinutes} goalMinutes={goalMinutes} />
+          <StudyHeader todayMinutes={completedTodayMinutes} goalMinutes={totalTodayMinutes} />
 
           <StudyStats
             streak={streak}
-            todayMinutes={todayMinutes}
-            weekMinutes={weekMinutes}
+            todayMinutes={completedTodayMinutes}
+            weekMinutes={pomodoroMinutes}
             weekGoalMinutes={weekGoal}
           />
 

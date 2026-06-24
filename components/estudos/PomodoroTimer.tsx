@@ -7,9 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { todayISO } from '@/lib/utils'
 import type { Subject, StudySession } from '@/types'
 
-const STUDY_SECS = 25 * 60
-const BREAK_SECS = 5 * 60
-
 type Phase = 'idle' | 'study' | 'break'
 
 interface Props {
@@ -19,21 +16,25 @@ interface Props {
 }
 
 export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
-  const [phase, setPhase]     = useState<Phase>('idle')
-  const [seconds, setSeconds] = useState(STUDY_SECS)
-  const [running, setRunning] = useState(false)
+  const [phase, setPhase]       = useState<Phase>('idle')
+  const [studyMins, setStudyMins] = useState(25)
+  const [breakMins, setBreakMins] = useState(5)
+  const [seconds, setSeconds]   = useState(25 * 60)
+  const [running, setRunning]   = useState(false)
   const [subjectId, setSubjectId] = useState<string | null>(null)
-  const [cycles, setCycles]   = useState(0)
+  const [cycles, setCycles]     = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const total = phase === 'break' ? BREAK_SECS : STUDY_SECS
+  const studySecs = studyMins * 60
+  const breakSecs = breakMins * 60
+  const total = phase === 'break' ? breakSecs : studySecs
   const pct   = Math.round(((total - seconds) / total) * 100)
 
   const saveSession = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
       .from('study_sessions')
-      .insert({ user_id: userId, subject_id: subjectId, date: todayISO(), duration_minutes: 25 })
+      .insert({ user_id: userId, subject_id: subjectId, date: todayISO(), duration_minutes: studyMins })
       .select()
       .single()
     if (data) onSessionSaved(data as StudySession)
@@ -45,10 +46,10 @@ export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
       await saveSession()
       setCycles(c => c + 1)
       setPhase('break')
-      setSeconds(BREAK_SECS)
+      setSeconds(breakSecs)
     } else {
       setPhase('study')
-      setSeconds(STUDY_SECS)
+      setSeconds(studySecs)
     }
   }, [phase, saveSession])
 
@@ -82,7 +83,7 @@ export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
 
   const reset = () => {
     setRunning(false)
-    setSeconds(STUDY_SECS)
+    setSeconds(studySecs)
     setPhase('idle')
   }
 
@@ -124,6 +125,36 @@ export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
               <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* Duration inputs — only when idle */}
+      {phase === 'idle' && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+          <div style={{ flex: 1 }}>
+            <label className="form-label">Foco (min)</label>
+            <input
+              type="number" min="1" max="120"
+              value={studyMins}
+              onChange={e => {
+                const v = Math.max(1, parseInt(e.target.value) || 25)
+                setStudyMins(v)
+                setSeconds(v * 60)
+              }}
+              className="field field-sm"
+              style={{ marginTop: 4 }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="form-label">Pausa (min)</label>
+            <input
+              type="number" min="1" max="60"
+              value={breakMins}
+              onChange={e => setBreakMins(Math.max(1, parseInt(e.target.value) || 5))}
+              className="field field-sm"
+              style={{ marginTop: 4 }}
+            />
+          </div>
         </div>
       )}
 
