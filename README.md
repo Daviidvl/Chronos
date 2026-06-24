@@ -42,7 +42,3 @@ Uma aplicação construída para uso real, não para demo. O foco está em três
 - **Deployed on Vercel**
 
 ---
-
-## Autor
-
-Desenvolvido por [Davi Pereira](https://github.com/Daviidvl)
