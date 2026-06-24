@@ -1,5 +1,3 @@
-'use client'
-
 import { motion, AnimatePresence } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
 import type { Topic } from '@/types'

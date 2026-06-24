@@ -40,10 +40,6 @@ export interface HabitLog {
   completed: boolean
 }
 
-export interface HabitWithLog extends Habit {
-  logs: HabitLog[]
-}
-
 export interface Subject {
   id: string
   user_id: string
@@ -86,12 +82,3 @@ export interface SubjectSchedule {
   created_at: string
 }
 
-export interface StudyPlanItem {
-  id: string
-  user_id: string
-  day_of_week: number
-  title: string
-  content: string | null
-  completed: boolean
-  created_at: string
-}

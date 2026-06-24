@@ -1,21 +1,7 @@
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-import { format, isToday, isYesterday, isTomorrow } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { format } from 'date-fns'
 
 export function todayISO(): string {
   return format(new Date(), 'yyyy-MM-dd')
-}
-
-export function formatDate(date: Date): string {
-  if (isToday(date)) return 'Hoje'
-  if (isYesterday(date)) return 'Ontem'
-  if (isTomorrow(date)) return 'Amanhã'
-  return format(date, "EEE, dd 'de' MMM", { locale: ptBR })
 }
 
 export function greeting(): string {
@@ -23,13 +9,6 @@ export function greeting(): string {
   if (h < 12) return 'Bom dia'
   if (h < 18) return 'Boa tarde'
   return 'Boa noite'
-}
-
-export function greetingEmoji(): string {
-  const h = new Date().getHours()
-  if (h < 12) return '☀️'
-  if (h < 18) return '🌤️'
-  return '🌙'
 }
 
 export function formatMinutes(minutes: number): string {
