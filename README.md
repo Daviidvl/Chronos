@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chronos
 
-## Getting Started
+**Organiza o teu dia com clareza.**
 
-First, run the development server:
+Chronos é uma PWA pessoal para quem leva a sério os estudos, hábitos e produtividade diária. Interface limpa, sem distrações — tudo o que precisas numa aplicação mobile-first.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## O que é o Chronos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Uma aplicação construída para uso real, não para demo. O foco está em três pilares:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Estudos** — plano de estudos semanal com matérias por dia, registo de conteúdos, marcação de aulas concluídas e sistema de revisão espaçada. Cada dia tem as suas matérias, cada matéria tem o seu progresso.
 
-## Learn More
+**Hábitos** — registo diário de hábitos com streak e histórico. Cada hábito pode ter um horário definido.
 
-To learn more about Next.js, take a look at the following resources:
+**Rotina** — timeline visual do dia, ordenada por hora, com os hábitos programados como script do dia.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Funcionalidades
 
-## Deploy on Vercel
+- Plano de estudos por dia da semana — segunda com POO Java, terça com IA para Negócios, cada dia o seu foco
+- Progresso por matéria com barra visual e percentagem de conclusão
+- Sistema de revisão espaçada para rever conteúdos no momento certo
+- Timer Pomodoro integrado na secção de estudos
+- Hábitos diários com streak e marcação por dia
+- Rotina como timeline ordenada por hora
+- Tarefas do dia com prioridade, horário e categoria
+- PWA instalável no telemóvel — funciona como app nativa
+- Dados sincronizados entre dispositivos via Supabase
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Stack
+
+- **React + Vite** — SPA rápida e leve
+- **TypeScript** — tipagem completa
+- **Supabase** — base de dados PostgreSQL com autenticação e RLS
+- **Framer Motion** — animações fluidas
+- **Tailwind CSS v4**
+- **Deployed on Vercel**
+
+---
+
+## Autor
+
+Desenvolvido por [Davi Pereira](https://github.com/Daviidvl)
