@@ -6,12 +6,14 @@ import HabitosPage      from '../app/(app)/habitos/page'
 import EstudosPage      from '../app/(app)/estudos/page'
 import RotinaPage       from '../app/(app)/rotina/page'
 import ConfigPage       from '../app/(app)/configuracoes/page'
+import WidgetPage       from '../app/widget/page'
 
 // BASE_URL is '/' in dev and '/Chronos/' in production (set by vite.config.ts)
 const base = import.meta.env.BASE_URL.replace(/\/$/, '') // '/Chronos' or ''
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
+  { path: '/login',  element: <LoginPage /> },
+  { path: '/widget', element: <WidgetPage /> },
   {
     element: <AppLayout />,
     children: [
