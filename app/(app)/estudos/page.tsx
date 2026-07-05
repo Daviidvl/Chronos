@@ -8,7 +8,7 @@ import { StudyHeader }  from '@/components/estudos/StudyHeader'
 import { StudyStats }   from '@/components/estudos/StudyStats'
 import { SubjectCard }  from '@/components/estudos/SubjectCard'
 import { PomodoroTimer } from '@/components/estudos/PomodoroTimer'
-import { RevisionList } from '@/components/estudos/RevisionList'
+import { RevisionList, type ReviewDifficulty } from '@/components/estudos/RevisionList'
 import type { Subject, Topic, StudySession, SubjectSchedule } from '@/types'
 import { format, addDays } from 'date-fns'
 
@@ -369,13 +369,28 @@ export default function EstudosPage() {
     ])
   }
 
-  const markReviewed = async (topic: Topic) => {
-    const next     = nextReviewInterval(topic.review_interval)
+  const markReviewed = async (topic: Topic, difficulty: ReviewDifficulty) => {
+    let next: number
+    if (difficulty === 'hard') {
+      next = 1
+    } else if (difficulty === 'easy') {
+      const first = nextReviewInterval(topic.review_interval)
+      next = nextReviewInterval(first)
+    } else {
+      next = nextReviewInterval(topic.review_interval)
+    }
     const nextDate = format(addDays(new Date(), next), 'yyyy-MM-dd')
     const supabase = createClient()
     await supabase.from('topics').update({ review_interval: next, review_date: nextDate }).eq('id', topic.id)
     setRevisions(rs => rs.filter(r => r.id !== topic.id))
     setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, review_interval: next, review_date: nextDate } : t))
+  }
+
+  const dismissRevision = async (topic: Topic) => {
+    const supabase = createClient()
+    await supabase.from('topics').update({ review_date: null, review_interval: null }).eq('id', topic.id)
+    setRevisions(rs => rs.filter(r => r.id !== topic.id))
+    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, review_date: null, review_interval: null } : t))
   }
 
   const todayDayOfWeek = (new Date().getDay() + 6) % 7
@@ -419,7 +434,11 @@ export default function EstudosPage() {
           />
 
           {revisions.length > 0 && (
-            <RevisionList topics={revisions} onReview={markReviewed} />
+            <RevisionList
+              topics={revisions}
+              onReview={markReviewed}
+              onDismiss={dismissRevision}
+            />
           )}
 
           <div>

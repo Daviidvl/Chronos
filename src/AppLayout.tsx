@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { ModalProvider } from '../lib/modal-context'
-import { BottomNav }    from '../components/nav/BottomNav'
 import { createClient } from '../lib/supabase/client'
 
 export function AppLayout() {
@@ -40,10 +39,9 @@ export function AppLayout() {
   return (
     <ModalProvider>
       <div style={{ minHeight: '100dvh', background: 'var(--color-canvas)' }}>
-        <main className="pb-nav">
+        <main>
           <Outlet />
         </main>
-        <BottomNav />
       </div>
     </ModalProvider>
   )
