@@ -5,6 +5,7 @@ import { format, addDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useModal } from '@/lib/modal-context'
 import { SubjectCard } from '@/components/estudos/SubjectCard'
+import { FlashcardGenerator } from '@/components/estudos/FlashcardGenerator'
 import type { Subject, Topic, SubjectSchedule } from '@/types'
 
 const PALETTE = [
@@ -204,9 +205,10 @@ export default function MateriasPage() {
   const [schedules,    setSchedules]    = useState<SubjectSchedule[]>([])
   const [userId,       setUserId]       = useState('')
   const [activeDay,    setActiveDay]    = useState(() => (new Date().getDay() + 6) % 7)
-  const [showAdd,      setShowAdd]      = useState(false)
-  const [showAddToDay, setShowAddToDay] = useState(false)
-  const [loading,      setLoading]      = useState(true)
+  const [showAdd,       setShowAdd]       = useState(false)
+  const [showAddToDay,  setShowAddToDay]  = useState(false)
+  const [generatingFor, setGeneratingFor] = useState<Topic | null>(null)
+  const [loading,       setLoading]       = useState(true)
 
   const { open: openModal, close: closeModal } = useModal()
 
@@ -384,6 +386,7 @@ export default function MateriasPage() {
                       onAddTopic={addTopic}
                       onDelete={deleteSubject}
                       onRemoveFromDay={() => removeFromDay(subject.id)}
+                      onGenerateFlashcards={topic => { setGeneratingFor(topic); openModal() }}
                     />
                   </motion.div>
                 ))}
@@ -425,6 +428,18 @@ export default function MateriasPage() {
             onClose={() => { setShowAddToDay(false); closeModal() }}
             onAdd={addToSchedule}
             onCreateNew={() => { setShowAdd(true); openModal() }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {generatingFor && (
+          <FlashcardGenerator
+            topic={generatingFor}
+            subject={generatingFor.subject ?? subjects.find(s => s.id === generatingFor.subject_id)!}
+            userId={userId}
+            onClose={() => { setGeneratingFor(null); closeModal() }}
+            onSaved={() => { setGeneratingFor(null); closeModal() }}
           />
         )}
       </AnimatePresence>

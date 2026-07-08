@@ -2,14 +2,15 @@ import { useEffect, useState, useCallback } from 'react'
 import { format, addDays } from 'date-fns'
 import { RefreshCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { todayISO } from '@/lib/utils'
-import { nextReviewInterval } from '@/lib/utils'
+import { todayISO, nextReviewInterval } from '@/lib/utils'
 import { RevisionList, type ReviewDifficulty } from '@/components/estudos/RevisionList'
-import type { Topic } from '@/types'
+import { FlashcardReview } from '@/components/estudos/FlashcardReview'
+import type { Topic, Flashcard } from '@/types'
 
 export default function RevisoesPage() {
-  const [revisions, setRevisions] = useState<Topic[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [revisions,  setRevisions]  = useState<Topic[]>([])
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const [loading,    setLoading]    = useState(true)
 
   const today = todayISO()
 
@@ -18,15 +19,23 @@ export default function RevisoesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    const { data } = await supabase
-      .from('topics')
-      .select('*, subject:subjects(*)')
-      .eq('user_id', user.id)
-      .eq('completed', true)
-      .lte('review_date', today)
-      .not('review_date', 'is', null)
+    const [{ data: topicsData }, { data: cardsData }] = await Promise.all([
+      supabase
+        .from('topics')
+        .select('*, subject:subjects(*)')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .lte('review_date', today)
+        .not('review_date', 'is', null),
+      supabase
+        .from('flashcards')
+        .select('*, topic:topics(*, subject:subjects(*))')
+        .eq('user_id', user.id)
+        .lte('review_date', today),
+    ])
 
-    setRevisions((data as Topic[]) ?? [])
+    setRevisions((topicsData as Topic[]) ?? [])
+    setFlashcards((cardsData as Flashcard[]) ?? [])
     setLoading(false)
   }, [today])
 
@@ -62,7 +71,9 @@ export default function RevisoesPage() {
     )
   }
 
-  if (revisions.length === 0) {
+  const hasContent = revisions.length > 0 || flashcards.length > 0
+
+  if (!hasContent) {
     return (
       <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
         <div style={{
@@ -73,19 +84,30 @@ export default function RevisoesPage() {
         </div>
         <p style={{ fontSize: 16, fontWeight: 700, color: '#121826' }}>Sem revisões pendentes</p>
         <p style={{ fontSize: 13, color: '#9BA5B4', textAlign: 'center', maxWidth: 240 }}>
-          Quando você concluir conteúdos, eles aparecerão aqui para revisão.
+          Quando você concluir conteúdos ou gerar flashcards, eles aparecerão aqui.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="page">
-      <RevisionList
-        topics={revisions}
-        onReview={markReviewed}
-        onDismiss={dismissRevision}
-      />
+    <div className="page" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {flashcards.length > 0 && (
+        <div className="card">
+          <FlashcardReview
+            cards={flashcards}
+            onDone={remaining => setFlashcards(remaining)}
+          />
+        </div>
+      )}
+
+      {revisions.length > 0 && (
+        <RevisionList
+          topics={revisions}
+          onReview={markReviewed}
+          onDismiss={dismissRevision}
+        />
+      )}
     </div>
   )
 }

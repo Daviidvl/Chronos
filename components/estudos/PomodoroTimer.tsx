@@ -13,9 +13,35 @@ interface Props {
   subjects: Subject[]
   userId: string
   onSessionSaved: (s: StudySession) => void
+  onSubjectChange?: (id: string | null) => void
 }
 
-export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
+function playChime(phase: Phase) {
+  try {
+    const ctx = new AudioContext()
+    // study done → ascending C E G  |  break done → soft single tone
+    const notes = phase === 'study'
+      ? [523.25, 659.25, 783.99]
+      : [659.25, 523.25]
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      const t = ctx.currentTime + i * 0.22
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.06)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(t)
+      osc.stop(t + 1)
+    })
+    setTimeout(() => ctx.close(), 3000)
+  } catch {}
+}
+
+export function PomodoroTimer({ subjects, userId, onSessionSaved, onSubjectChange }: Props) {
   const [phase, setPhase]         = useState<Phase>('idle')
   const [studyMins, setStudyMins] = useState(25)
   const [breakMins, setBreakMins] = useState(5)
@@ -56,6 +82,7 @@ export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
   }, [userId, subjectId, onSessionSaved, studyMins])
 
   const phaseComplete = useCallback(async () => {
+    playChime(phase)
     setRunning(false)
     if (phase === 'study') {
       await saveSession()
@@ -166,7 +193,11 @@ export function PomodoroTimer({ subjects, userId, onSessionSaved }: Props) {
             <label className="form-label">Estudando</label>
             <select
               value={subjectId ?? ''}
-              onChange={e => setSubjectId(e.target.value || null)}
+              onChange={e => {
+                const v = e.target.value || null
+                setSubjectId(v)
+                onSubjectChange?.(v)
+              }}
               className="field field-sm"
               style={{ marginTop: 6 }}
             >

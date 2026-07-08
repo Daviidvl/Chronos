@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus } from 'lucide-react'
+import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus, Sparkles } from 'lucide-react'
 import type { Subject, Topic } from '@/types'
 import { formatMinutes } from '@/lib/utils'
 
@@ -12,11 +12,12 @@ interface Props {
   onAddTopic: (subjectId: string, title: string, estimatedMinutes: number) => Promise<void>
   onDelete: (id: string) => void
   onRemoveFromDay?: () => void
+  onGenerateFlashcards?: (topic: Topic) => void
 }
 
 export function SubjectCard({
   subject, topics, sessionMinutes,
-  onToggleTopic, onAddTopic, onDelete, onRemoveFromDay,
+  onToggleTopic, onAddTopic, onDelete, onRemoveFromDay, onGenerateFlashcards,
 }: Props) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTopic, setAddingTopic] = useState(false)
@@ -166,6 +167,17 @@ export function SubjectCard({
                   <span className="topic-time">
                     {formatMinutes(topic.estimated_minutes)}
                   </span>
+
+                  {topic.completed && onGenerateFlashcards && (
+                    <button
+                      onClick={e => { e.stopPropagation(); onGenerateFlashcards(topic) }}
+                      className="btn-icon"
+                      title="Gerar flashcards com IA"
+                      style={{ color: '#6E5CF6', opacity: 0.7 }}
+                    >
+                      <Sparkles size={13} />
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>

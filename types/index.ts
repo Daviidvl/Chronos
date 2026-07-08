@@ -82,3 +82,15 @@ export interface SubjectSchedule {
   created_at: string
 }
 
+export interface Flashcard {
+  id: string
+  user_id: string
+  topic_id: string
+  question: string
+  answer: string
+  review_interval: number
+  review_date: string
+  created_at: string
+  topic?: Topic
+}
+

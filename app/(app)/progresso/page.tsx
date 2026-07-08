@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { format, addDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { calcStreak, todayISO } from '@/lib/utils'
-import { StudyHeader } from '@/components/estudos/StudyHeader'
-import { StudyStats }  from '@/components/estudos/StudyStats'
+import { StudyHeader }  from '@/components/estudos/StudyHeader'
+import { StudyStats }   from '@/components/estudos/StudyStats'
+import { StudyHeatmap } from '@/components/estudos/StudyHeatmap'
 import type { Topic, StudySession } from '@/types'
 
 function Skeleton() {
@@ -15,15 +16,17 @@ function Skeleton() {
           <div key={i} className="skel" style={{ height: 90, borderRadius: 'var(--r)' }} />
         ))}
       </div>
+      <div className="skel" style={{ height: 110, borderRadius: 'var(--r)' }} />
     </div>
   )
 }
 
 export default function ProgressoPage() {
-  const [topics,   setTopics]   = useState<Topic[]>([])
-  const [sessions, setSessions] = useState<StudySession[]>([])
-  const [streak,   setStreak]   = useState(0)
-  const [loading,  setLoading]  = useState(true)
+  const [topics,        setTopics]        = useState<Topic[]>([])
+  const [sessions,      setSessions]      = useState<StudySession[]>([])
+  const [allSessions,   setAllSessions]   = useState<StudySession[]>([])
+  const [streak,        setStreak]        = useState(0)
+  const [loading,       setLoading]       = useState(true)
 
   const today = todayISO()
 
@@ -32,21 +35,25 @@ export default function ProgressoPage() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { setLoading(false); return }
 
-      const sixtyAgo = format(addDays(new Date(), -60), 'yyyy-MM-dd')
+      const sixtyAgo  = format(addDays(new Date(), -60),  'yyyy-MM-dd')
+      const ninetyAgo = format(addDays(new Date(), -104), 'yyyy-MM-dd')
 
       const [
         { data: topicsData },
         { data: sessionsData },
         { data: streakData },
+        { data: allSessionsData },
       ] = await Promise.all([
         supabase.from('topics').select('*').eq('user_id', user.id),
         supabase.from('study_sessions').select('*').eq('user_id', user.id).eq('date', today),
         supabase.from('study_sessions').select('date').eq('user_id', user.id).gte('date', sixtyAgo),
+        supabase.from('study_sessions').select('date, duration_minutes').eq('user_id', user.id).gte('date', ninetyAgo),
       ])
 
       setTopics((topicsData as Topic[]) ?? [])
       setSessions((sessionsData as StudySession[]) ?? [])
       setStreak(calcStreak((streakData ?? []).map((r: { date: string }) => r.date)))
+      setAllSessions((allSessionsData as StudySession[]) ?? [])
       setLoading(false)
     })
   }, [today])
@@ -56,6 +63,14 @@ export default function ProgressoPage() {
   const completedTodayMinutes = todayTopics.filter(t => t.completed).reduce((s, t) => s + t.estimated_minutes, 0)
   const totalTodayMinutes     = todayTopics.reduce((s, t) => s + t.estimated_minutes, 0)
   const pomodoroMinutes       = sessions.reduce((s, se) => s + se.duration_minutes, 0)
+
+  // Aggregate sessions by date for heatmap
+  const heatmapData = Object.entries(
+    allSessions.reduce((acc, s) => {
+      acc[s.date] = (acc[s.date] ?? 0) + s.duration_minutes
+      return acc
+    }, {} as Record<string, number>)
+  ).map(([date, minutes]) => ({ date, minutes }))
 
   if (loading) return <div className="page"><Skeleton /></div>
 
@@ -71,6 +86,9 @@ export default function ProgressoPage() {
         weekMinutes={pomodoroMinutes}
         weekGoalMinutes={0}
       />
+      <div className="card">
+        <StudyHeatmap data={heatmapData} />
+      </div>
     </div>
   )
 }
