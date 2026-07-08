@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -11,16 +11,17 @@ interface Props {
   data: DayData[]
 }
 
-const WEEKS   = 13
-const DAY_PX  = 11
-const GAP_PX  = 2
-const STEP    = DAY_PX + GAP_PX
+const WEEKS  = 13
+const CELL   = 13
+const GAP    = 3
+const STEP   = CELL + GAP
 
-function getColor(mins: number): string {
-  if (mins === 0) return '#E9ECF2'
-  if (mins < 30)  return '#DDD6FE'
-  if (mins < 60)  return '#A78BFA'
-  if (mins < 120) return '#7C3AED'
+function getColor(mins: number, isToday: boolean): string {
+  if (isToday && mins === 0) return 'transparent'
+  if (mins === 0)  return 'var(--bdr-2, #E9ECF2)'
+  if (mins < 30)   return '#DDD6FE'
+  if (mins < 60)   return '#A78BFA'
+  if (mins < 120)  return '#7C3AED'
   return '#6E5CF6'
 }
 
@@ -28,47 +29,44 @@ function formatMins(m: number): string {
   if (m < 60) return `${m}min`
   const h = Math.floor(m / 60)
   const r = m % 60
-  return r === 0 ? `${h}h` : `${h}h${String(r).padStart(2, '0')}min`
+  return r === 0 ? `${h}h` : `${h}h${String(r).padStart(2, '0')}`
 }
 
 export function StudyHeatmap({ data }: Props) {
-  const { grid, monthLabels } = useMemo(() => {
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
+
+  const { grid, monthLabels, todayISO } = useMemo(() => {
     const byDate: Record<string, number> = {}
     data.forEach(d => { byDate[d.date] = (byDate[d.date] ?? 0) + d.minutes })
 
-    const today   = new Date()
-    const endDate = today
-    // go back WEEKS * 7 days and align to Monday
+    const today    = new Date()
+    const todayISO = format(today, 'yyyy-MM-dd')
+    const endDate  = today
     const rawStart = addDays(endDate, -(WEEKS * 7 - 1))
-    const startDate = startOfWeek(rawStart, { weekStartsOn: 1 }) // Monday
+    const startDate = startOfWeek(rawStart, { weekStartsOn: 1 })
 
-    // build flat list of days from startDate to endDate
-    const days: { date: string; minutes: number; isoPad: boolean }[] = []
+    const days: { date: string; minutes: number; isPad: boolean }[] = []
     let cur = startDate
     while (cur <= endDate) {
       const iso = format(cur, 'yyyy-MM-dd')
-      days.push({ date: iso, minutes: byDate[iso] ?? 0, isoPad: false })
+      days.push({ date: iso, minutes: byDate[iso] ?? 0, isPad: false })
       cur = addDays(cur, 1)
     }
-
-    // pad end so grid is full WEEKS * 7 cells
     while (days.length < WEEKS * 7) {
-      days.push({ date: '', minutes: 0, isoPad: true })
+      days.push({ date: '', minutes: 0, isPad: true })
     }
 
-    // chunk into weeks (columns of 7)
     const grid: typeof days[] = []
     for (let w = 0; w < WEEKS; w++) {
       grid.push(days.slice(w * 7, w * 7 + 7))
     }
 
-    // month labels: find first day of each month within our range
     const monthLabels: { label: string; col: number }[] = []
     let lastMonth = -1
     grid.forEach((week, wi) => {
-      const firstReal = week.find(d => !d.isoPad && d.date)
-      if (!firstReal) return
-      const d     = new Date(firstReal.date)
+      const first = week.find(d => !d.isPad && d.date)
+      if (!first) return
+      const d     = new Date(first.date + 'T12:00:00')
       const month = d.getMonth()
       if (month !== lastMonth) {
         monthLabels.push({ label: format(d, 'MMM', { locale: ptBR }), col: wi })
@@ -76,34 +74,47 @@ export function StudyHeatmap({ data }: Props) {
       }
     })
 
-    return { grid, monthLabels }
+    return { grid, monthLabels, todayISO }
   }, [data])
 
-  const DAYS_LABEL = ['Seg', '', 'Qua', '', 'Sex', '', '']
+  const DAY_LABELS = ['Seg', '', 'Qua', '', 'Sex', '', '']
+  const DAY_LABEL_W = 24
 
-  const totalWidth  = WEEKS * STEP - GAP_PX
-  const totalHeight = 7 * STEP - GAP_PX
+  const totalStudied = data.reduce((s, d) => s + d.minutes, 0)
+  const activeDays   = data.filter(d => d.minutes > 0).length
 
   return (
     <div>
-      <p style={{ fontSize: 12, fontWeight: 700, color: '#121826', marginBottom: 10 }}>
-        Atividade de estudo
-      </p>
+      {/* Title + summary */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#121826', marginBottom: 2 }}>
+            Atividade de estudo
+          </p>
+          <p style={{ fontSize: 11, color: '#9BA5B4' }}>
+            {activeDays} dias ativos · {formatMins(totalStudied)} no total
+          </p>
+        </div>
+      </div>
 
       <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-        <div style={{ display: 'inline-block', minWidth: totalWidth + 30 }}>
-          {/* Month labels */}
-          <div style={{ display: 'flex', marginLeft: 28, marginBottom: 4, position: 'relative', height: 14 }}>
+        <div style={{ display: 'inline-block' }}>
+          {/* Month row */}
+          <div style={{
+            display: 'flex', marginLeft: DAY_LABEL_W + GAP,
+            marginBottom: 6, position: 'relative',
+            height: 14,
+          }}>
             {monthLabels.map(({ label, col }) => (
               <span
                 key={`${label}-${col}`}
                 style={{
                   position: 'absolute',
                   left: col * STEP,
-                  fontSize: 10,
-                  fontWeight: 600,
+                  fontSize: 10, fontWeight: 600,
                   color: '#9BA5B4',
                   textTransform: 'capitalize',
+                  letterSpacing: '0.02em',
                 }}
               >
                 {label}
@@ -111,41 +122,58 @@ export function StudyHeatmap({ data }: Props) {
             ))}
           </div>
 
-          {/* Grid */}
-          <div style={{ display: 'flex', gap: GAP_PX }}>
+          {/* Grid + day labels */}
+          <div style={{ display: 'flex', gap: GAP }}>
             {/* Day labels */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: GAP_PX, marginRight: 4 }}>
-              {DAYS_LABEL.map((d, i) => (
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: GAP,
+              width: DAY_LABEL_W, flexShrink: 0,
+            }}>
+              {DAY_LABELS.map((d, i) => (
                 <div
                   key={i}
-                  style={{ height: DAY_PX, fontSize: 9, color: '#C2CAD8', lineHeight: `${DAY_PX}px`, fontWeight: 600 }}
+                  style={{
+                    height: CELL,
+                    fontSize: 9, fontWeight: 600,
+                    color: '#C2CAD8',
+                    lineHeight: `${CELL}px`,
+                    textAlign: 'right',
+                    paddingRight: 4,
+                  }}
                 >
                   {d}
                 </div>
               ))}
             </div>
 
-            {/* Weeks */}
+            {/* Week columns */}
             {grid.map((week, wi) => (
-              <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP_PX }}>
+              <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
                 {week.map((day, di) => {
-                  if (day.isoPad || !day.date) {
-                    return <div key={di} style={{ width: DAY_PX, height: DAY_PX }} />
+                  if (day.isPad || !day.date) {
+                    return <div key={di} style={{ width: CELL, height: CELL }} />
                   }
-                  const label = day.minutes > 0
-                    ? `${format(new Date(day.date), 'dd/MM/yyyy')} · ${formatMins(day.minutes)}`
-                    : format(new Date(day.date), 'dd/MM/yyyy')
+                  const isToday = day.date === todayISO
+                  const label   = day.minutes > 0
+                    ? `${format(new Date(day.date + 'T12:00:00'), 'dd MMM', { locale: ptBR })} · ${formatMins(day.minutes)}`
+                    : format(new Date(day.date + 'T12:00:00'), 'dd MMM', { locale: ptBR })
+
                   return (
                     <div
                       key={di}
-                      title={label}
+                      onMouseEnter={e => {
+                        const rect = (e.target as HTMLElement).getBoundingClientRect()
+                        setTooltip({ text: label, x: rect.left + CELL / 2, y: rect.top - 8 })
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
                       style={{
-                        width:  DAY_PX,
-                        height: DAY_PX,
-                        borderRadius: 2,
-                        background: getColor(day.minutes),
-                        cursor: day.minutes > 0 ? 'pointer' : 'default',
+                        width: CELL, height: CELL,
+                        borderRadius: 3,
+                        background: getColor(day.minutes, isToday),
+                        border: isToday ? '1.5px solid #6E5CF6' : 'none',
+                        cursor: 'default',
                         transition: 'opacity 0.1s',
+                        boxSizing: 'border-box',
                       }}
                     />
                   )
@@ -155,15 +183,47 @@ export function StudyHeatmap({ data }: Props) {
           </div>
 
           {/* Legend */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginLeft: 28 }}>
-            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600 }}>Menos</span>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            marginTop: 10, marginLeft: DAY_LABEL_W + GAP,
+          }}>
+            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600, marginRight: 2 }}>Menos</span>
             {[0, 20, 50, 90, 130].map(m => (
-              <div key={m} style={{ width: DAY_PX, height: DAY_PX, borderRadius: 2, background: getColor(m) }} />
+              <div
+                key={m}
+                style={{
+                  width: CELL, height: CELL, borderRadius: 3,
+                  background: getColor(m, false),
+                  border: m === 0 ? '1px solid var(--bdr-2, #E9ECF2)' : 'none',
+                }}
+              />
             ))}
-            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600 }}>Mais</span>
+            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600, marginLeft: 2 }}>Mais</span>
           </div>
         </div>
       </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltip.x, top: tooltip.y,
+            transform: 'translate(-50%, -100%)',
+            background: '#121826',
+            color: '#fff',
+            fontSize: 11, fontWeight: 600,
+            padding: '4px 8px',
+            borderRadius: 6,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+            zIndex: 9999,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+          }}
+        >
+          {tooltip.text}
+        </div>
+      )}
     </div>
   )
 }
