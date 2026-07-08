@@ -11,46 +11,59 @@ interface Props {
   data: DayData[]
 }
 
-const WEEKS  = 13
-const CELL   = 13
-const GAP    = 3
-const STEP   = CELL + GAP
+const WEEKS = 12
+const CELL  = 14
+const GAP   = 4
+const STEP  = CELL + GAP
 
-function getColor(mins: number, isToday: boolean): string {
-  if (isToday && mins === 0) return 'transparent'
-  if (mins === 0)  return 'var(--bdr-2, #E9ECF2)'
-  if (mins < 30)   return '#DDD6FE'
-  if (mins < 60)   return '#A78BFA'
-  if (mins < 120)  return '#7C3AED'
-  return '#6E5CF6'
+const LEVEL_COLORS = [
+  '#EDEEF2',  // 0  — empty
+  '#C4B5FD',  // 1  — < 30 min
+  '#A78BFA',  // 2  — < 60 min
+  '#7C3AED',  // 3  — < 120 min
+  '#6E5CF6',  // 4  — 120 min+
+]
+
+function getLevel(mins: number): number {
+  if (mins === 0)   return 0
+  if (mins < 30)    return 1
+  if (mins < 60)    return 2
+  if (mins < 120)   return 3
+  return 4
 }
 
 function formatMins(m: number): string {
-  if (m < 60) return `${m}min`
+  if (m === 0)  return 'Sem estudo'
+  if (m < 60)   return `${m}min`
   const h = Math.floor(m / 60)
   const r = m % 60
   return r === 0 ? `${h}h` : `${h}h${String(r).padStart(2, '0')}`
 }
 
-export function StudyHeatmap({ data }: Props) {
-  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
+const DAY_LABELS = ['Seg', '', 'Qua', '', 'Sex', '', '']
+const DAY_LABEL_W = 28
 
-  const { grid, monthLabels, todayISO } = useMemo(() => {
+export function StudyHeatmap({ data }: Props) {
+  const [hovered, setHovered] = useState<{ text: string; x: number; y: number } | null>(null)
+
+  const { grid, monthLabels, todayStr } = useMemo(() => {
     const byDate: Record<string, number> = {}
     data.forEach(d => { byDate[d.date] = (byDate[d.date] ?? 0) + d.minutes })
 
     const today    = new Date()
-    const todayISO = format(today, 'yyyy-MM-dd')
-    const endDate  = today
-    const rawStart = addDays(endDate, -(WEEKS * 7 - 1))
-    const startDate = startOfWeek(rawStart, { weekStartsOn: 1 })
+    const todayStr = format(today, 'yyyy-MM-dd')
+    const rawStart = addDays(today, -(WEEKS * 7 - 1))
+    const start    = startOfWeek(rawStart, { weekStartsOn: 1 })
 
     const days: { date: string; minutes: number; isPad: boolean }[] = []
-    let cur = startDate
-    while (cur <= endDate) {
+    let cur = start
+    while (format(cur, 'yyyy-MM-dd') <= todayStr) {
       const iso = format(cur, 'yyyy-MM-dd')
       days.push({ date: iso, minutes: byDate[iso] ?? 0, isPad: false })
       cur = addDays(cur, 1)
+    }
+    while (days.length % 7 !== 0) {
+      days.push({ date: '', minutes: 0, isPad: true })
     }
     while (days.length < WEEKS * 7) {
       days.push({ date: '', minutes: 0, isPad: true })
@@ -66,162 +79,181 @@ export function StudyHeatmap({ data }: Props) {
     grid.forEach((week, wi) => {
       const first = week.find(d => !d.isPad && d.date)
       if (!first) return
-      const d     = new Date(first.date + 'T12:00:00')
-      const month = d.getMonth()
-      if (month !== lastMonth) {
+      const d = new Date(first.date + 'T12:00:00')
+      const m = d.getMonth()
+      if (m !== lastMonth) {
         monthLabels.push({ label: format(d, 'MMM', { locale: ptBR }), col: wi })
-        lastMonth = month
+        lastMonth = m
       }
     })
 
-    return { grid, monthLabels, todayISO }
+    return { grid, monthLabels, todayStr }
   }, [data])
 
-  const DAY_LABELS = ['Seg', '', 'Qua', '', 'Sex', '', '']
-  const DAY_LABEL_W = 24
-
-  const totalStudied = data.reduce((s, d) => s + d.minutes, 0)
-  const activeDays   = data.filter(d => d.minutes > 0).length
+  const totalMins  = data.reduce((s, d) => s + d.minutes, 0)
+  const activeDays = data.filter(d => d.minutes > 0).length
 
   return (
     <div>
-      {/* Title + summary */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#121826', marginBottom: 2 }}>
-            Atividade de estudo
-          </p>
-          <p style={{ fontSize: 11, color: '#9BA5B4' }}>
-            {activeDays} dias ativos · {formatMins(totalStudied)} no total
-          </p>
-        </div>
+      {/* Header */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#121826', letterSpacing: '-0.2px' }}>
+          Atividade de estudo
+        </p>
+        <p style={{ fontSize: 11, color: '#9BA5B4', marginTop: 3 }}>
+          {activeDays} {activeDays === 1 ? 'dia ativo' : 'dias ativos'} · {formatMins(totalMins)} no total
+        </p>
       </div>
 
-      <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-        <div style={{ display: 'inline-block' }}>
-          {/* Month row */}
-          <div style={{
-            display: 'flex', marginLeft: DAY_LABEL_W + GAP,
-            marginBottom: 6, position: 'relative',
-            height: 14,
-          }}>
-            {monthLabels.map(({ label, col }) => (
-              <span
-                key={`${label}-${col}`}
-                style={{
-                  position: 'absolute',
-                  left: col * STEP,
-                  fontSize: 10, fontWeight: 600,
-                  color: '#9BA5B4',
-                  textTransform: 'capitalize',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                {label}
-              </span>
-            ))}
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6 }}>
+          {/* Month labels */}
+          <div style={{ display: 'flex', marginLeft: DAY_LABEL_W + GAP }}>
+            {grid.map((_, wi) => {
+              const label = monthLabels.find(m => m.col === wi)
+              return (
+                <div
+                  key={wi}
+                  style={{ width: CELL, marginRight: wi < WEEKS - 1 ? GAP : 0 }}
+                >
+                  {label && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700,
+                      color: '#B0B8C8',
+                      textTransform: 'capitalize',
+                      letterSpacing: '0.04em',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {label.label}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
 
-          {/* Grid + day labels */}
-          <div style={{ display: 'flex', gap: GAP }}>
-            {/* Day labels */}
+          {/* Grid rows */}
+          <div style={{ display: 'flex', gap: 0 }}>
+            {/* Day labels column */}
             <div style={{
-              display: 'flex', flexDirection: 'column', gap: GAP,
-              width: DAY_LABEL_W, flexShrink: 0,
+              display: 'flex', flexDirection: 'column',
+              gap: GAP, width: DAY_LABEL_W, marginRight: GAP, flexShrink: 0,
             }}>
-              {DAY_LABELS.map((d, i) => (
+              {DAY_LABELS.map((label, i) => (
                 <div
                   key={i}
                   style={{
                     height: CELL,
-                    fontSize: 9, fontWeight: 600,
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: 6,
+                    fontSize: 9, fontWeight: 700,
                     color: '#C2CAD8',
-                    lineHeight: `${CELL}px`,
-                    textAlign: 'right',
-                    paddingRight: 4,
+                    letterSpacing: '0.02em',
                   }}
                 >
-                  {d}
+                  {label}
                 </div>
               ))}
             </div>
 
             {/* Week columns */}
-            {grid.map((week, wi) => (
-              <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
-                {week.map((day, di) => {
-                  if (day.isPad || !day.date) {
-                    return <div key={di} style={{ width: CELL, height: CELL }} />
-                  }
-                  const isToday = day.date === todayISO
-                  const label   = day.minutes > 0
-                    ? `${format(new Date(day.date + 'T12:00:00'), 'dd MMM', { locale: ptBR })} · ${formatMins(day.minutes)}`
-                    : format(new Date(day.date + 'T12:00:00'), 'dd MMM', { locale: ptBR })
+            <div style={{ display: 'flex', gap: GAP }}>
+              {grid.map((week, wi) => (
+                <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
+                  {week.map((day, di) => {
+                    if (day.isPad || !day.date) {
+                      return (
+                        <div
+                          key={di}
+                          style={{ width: CELL, height: CELL, borderRadius: 3 }}
+                        />
+                      )
+                    }
 
-                  return (
-                    <div
-                      key={di}
-                      onMouseEnter={e => {
-                        const rect = (e.target as HTMLElement).getBoundingClientRect()
-                        setTooltip({ text: label, x: rect.left + CELL / 2, y: rect.top - 8 })
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                      style={{
-                        width: CELL, height: CELL,
-                        borderRadius: 3,
-                        background: getColor(day.minutes, isToday),
-                        border: isToday ? '1.5px solid #6E5CF6' : 'none',
-                        cursor: 'default',
-                        transition: 'opacity 0.1s',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  )
-                })}
-              </div>
-            ))}
+                    const isToday = day.date === todayStr
+                    const level   = getLevel(day.minutes)
+                    const d       = new Date(day.date + 'T12:00:00')
+                    const label   = `${format(d, "dd 'de' MMM", { locale: ptBR })} · ${formatMins(day.minutes)}`
+
+                    return (
+                      <div
+                        key={di}
+                        onMouseEnter={e => {
+                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                          setHovered({ text: label, x: r.left + CELL / 2, y: r.top - 6 })
+                        }}
+                        onMouseLeave={() => setHovered(null)}
+                        style={{
+                          width: CELL, height: CELL,
+                          borderRadius: 3,
+                          background: LEVEL_COLORS[level],
+                          outline: isToday ? '2px solid #6E5CF6' : 'none',
+                          outlineOffset: isToday ? '1px' : undefined,
+                          cursor: 'default',
+                          transition: 'transform 0.1s',
+                          boxSizing: 'border-box',
+                        }}
+                        onMouseOver={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.3)' }}
+                        onFocus={() => {}}
+                        onBlur={() => {}}
+                        // reset scale on mouse out
+                        {...{ onMouseOut: (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' } }}
+                      />
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Legend */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 5,
-            marginTop: 10, marginLeft: DAY_LABEL_W + GAP,
+            marginTop: 4, marginLeft: DAY_LABEL_W + GAP,
           }}>
-            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600, marginRight: 2 }}>Menos</span>
-            {[0, 20, 50, 90, 130].map(m => (
+            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600, marginRight: 1 }}>Menos</span>
+            {LEVEL_COLORS.map((color, i) => (
               <div
-                key={m}
+                key={i}
                 style={{
                   width: CELL, height: CELL, borderRadius: 3,
-                  background: getColor(m, false),
-                  border: m === 0 ? '1px solid var(--bdr-2, #E9ECF2)' : 'none',
+                  background: color,
+                  border: i === 0 ? '1.5px solid #DDE1EA' : 'none',
                 }}
               />
             ))}
-            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600, marginLeft: 2 }}>Mais</span>
+            <span style={{ fontSize: 9, color: '#C2CAD8', fontWeight: 600, marginLeft: 1 }}>Mais</span>
           </div>
         </div>
       </div>
 
       {/* Tooltip */}
-      {tooltip && (
+      {hovered && (
         <div
           style={{
             position: 'fixed',
-            left: tooltip.x, top: tooltip.y,
+            left: hovered.x, top: hovered.y,
             transform: 'translate(-50%, -100%)',
-            background: '#121826',
+            background: '#1E2330',
             color: '#fff',
             fontSize: 11, fontWeight: 600,
-            padding: '4px 8px',
-            borderRadius: 6,
+            padding: '5px 9px',
+            borderRadius: 7,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
             zIndex: 9999,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
           }}
         >
-          {tooltip.text}
+          {hovered.text}
+          <div style={{
+            position: 'absolute', bottom: -4, left: '50%',
+            transform: 'translateX(-50%)',
+            width: 8, height: 8,
+            background: '#1E2330',
+            clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
+          }} />
         </div>
       )}
     </div>
