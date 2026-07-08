@@ -97,10 +97,10 @@ export function StudyHeatmap({ data }: Props) {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#121826', letterSpacing: '-0.2px' }}>
+        <p style={{ padding: 8, fontSize: 13, fontWeight: 700, color: '#121826', letterSpacing: '-0.2px' }}>
           Atividade de estudo
         </p>
-        <p style={{ fontSize: 11, color: '#9BA5B4', marginTop: 3 }}>
+        <p style={{ marginLeft: 10, fontSize: 11, color: '#9BA5B4', marginTop: 3 }}>
           {activeDays} {activeDays === 1 ? 'dia ativo' : 'dias ativos'} · {formatMins(totalMins)} no total
         </p>
       </div>

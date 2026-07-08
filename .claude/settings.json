@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(rm -f \"app/\\(app\\)/estudos/page.tsx\")",
-      "Bash(rmdir \"app/\\(app\\)/estudos\")"
+      "Bash(rmdir \"app/\\(app\\)/estudos\")",
+      "Bash(git status *)"
     ]
   }
 }
