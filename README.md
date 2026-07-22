@@ -10,7 +10,7 @@ Chronos é uma PWA pessoal para quem leva a sério os estudos, hábitos e produt
 
 Uma aplicação construída para uso real, não para demo. O foco está em três pilares:
 
-**Estudos** — plano de estudos semanal com matérias por dia, registo de conteúdos, marcação de aulas concluídas e sistema de revisão espaçada. Cada dia tem as suas matérias, cada matéria tem o seu progresso.
+**Estudos** — plano de estudos semanal com matérias por dia, registo de conteúdos e marcação de aulas concluídas. Cada dia tem as suas matérias, cada matéria tem o seu progresso.
 
 **Hábitos** — registo diário de hábitos com streak e histórico. Cada hábito pode ter um horário definido.
 
@@ -22,8 +22,6 @@ Uma aplicação construída para uso real, não para demo. O foco está em três
 
 - Plano de estudos por dia da semana — segunda com POO Java, terça com IA para Negócios, cada dia o seu foco
 - Progresso por matéria com barra visual e percentagem de conclusão
-- Sistema de revisão espaçada para rever conteúdos no momento certo
-- Timer Pomodoro integrado na secção de estudos
 - Hábitos diários com streak e marcação por dia
 - Rotina como timeline ordenada por hora
 - Tarefas do dia com prioridade, horário e categoria

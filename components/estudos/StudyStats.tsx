@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Flame, Clock, Timer } from 'lucide-react'
+import { Flame, Clock, CheckCircle2 } from 'lucide-react'
 import { formatMinutes } from '@/lib/utils'
 
 interface Props {
@@ -26,9 +26,9 @@ export function StudyStats({ streak, todayMinutes, weekMinutes, weekGoalMinutes 
       bg: 'rgba(37,99,235,0.1)',
     },
     {
-      icon: <Timer size={16} strokeWidth={2} />,
+      icon: <CheckCircle2 size={16} strokeWidth={2} />,
       number: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—',
-      label: 'Pomodoro',
+      label: 'Estudado',
       color: '#6E5CF6',
       bg: 'rgba(110,92,246,0.1)',
     },

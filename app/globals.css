@@ -126,10 +126,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   padding: 40px var(--px) 24px;
 }
 
-.pb-nav {
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px);
-}
-
 /* ═══════════════════════════════════════
    CARD SYSTEM
 ═══════════════════════════════════════ */
@@ -173,64 +169,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: #9BA5B4;
-}
-
-/* ═══════════════════════════════════════
-   BOTTOM NAVIGATION
-═══════════════════════════════════════ */
-
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  height: var(--nav-h);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border-top: 1px solid rgba(18,24,38,0.06);
-  box-shadow: 0 -8px 32px rgba(18,24,38,0.05);
-}
-
-.bottom-nav-inner {
-  max-width: 600px;
-  margin: 0 auto;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 8px;
-}
-
-.nav-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: 72px;
-  padding: 6px 8px 8px;
-  border-radius: var(--r-sm);
-  color: #C2CAD8;
-  font-size: 10.5px;
-  font-weight: 500;
-  transition: color 0.2s ease;
-  text-decoration: none;
-}
-
-.nav-item--active {
-  color: #6E5CF6;
-  font-weight: 700;
-}
-
-.nav-active-bg {
-  position: absolute;
-  inset: 2px;
-  border-radius: var(--r-xs);
-  background: rgba(110, 92, 246, 0.08);
 }
 
 /* ═══════════════════════════════════════
@@ -1062,72 +1000,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   font-size: 11px;
   color: #C2CAD8;
   font-weight: 500;
-  flex-shrink: 0;
-}
-
-/* Pomodoro */
-.pomodoro-card {
-  background: #FFFFFF;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--bdr);
-  box-shadow: var(--sh-sm);
-  padding: 24px;
-}
-
-.pomodoro-phase {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  margin-bottom: 12px;
-}
-
-.pomodoro-display {
-  font-size: 52px;
-  font-weight: 800;
-  letter-spacing: -2px;
-  line-height: 1;
-  color: #121826;
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 16px;
-}
-
-.pomodoro-track {
-  height: 5px;
-  border-radius: 99px;
-  overflow: hidden;
-  margin-bottom: 24px;
-}
-
-.pomodoro-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 1s linear;
-}
-
-.pomodoro-btn-row {
-  display: flex;
-  gap: 10px;
-}
-
-/* Review row */
-.review-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--bdr);
-}
-
-.review-row:last-child { border-bottom: none; }
-
-.review-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 99px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   flex-shrink: 0;
 }
 
