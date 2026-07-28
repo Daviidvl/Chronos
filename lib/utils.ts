@@ -19,13 +19,19 @@ export function formatMinutes(minutes: number): string {
 }
 
 export function calcStreak(completedDates: string[]): number {
-  const unique = [...new Set(completedDates)].sort().reverse()
+  const unique = new Set(completedDates)
+  const todayIso = format(new Date(), 'yyyy-MM-dd')
+
+  // The day isn't over yet, so an incomplete "today" doesn't break the
+  // streak — just don't count it until it's actually marked complete.
+  let i = unique.has(todayIso) ? 0 : 1
+
   let streak = 0
-  for (let i = 0; i < 60; i++) {
+  for (; i < 60; i++) {
     const d = new Date()
     d.setDate(d.getDate() - i)
     const iso = format(d, 'yyyy-MM-dd')
-    if (unique.includes(iso)) {
+    if (unique.has(iso)) {
       streak++
     } else {
       break
