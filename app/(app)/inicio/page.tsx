@@ -5,10 +5,12 @@ import { format, addDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useModal } from '@/lib/modal-context'
 import { calcStreak, todayISO } from '@/lib/utils'
+import { randomPhrase } from '@/lib/motivational-phrases'
 import { StudyHeader }  from '@/components/estudos/StudyHeader'
 import { StudyStats }   from '@/components/estudos/StudyStats'
 import { StudyHeatmap } from '@/components/estudos/StudyHeatmap'
 import { SubjectCard } from '@/components/estudos/SubjectCard'
+import { ShareReveal, type ShareSubjectStat } from '@/components/estudos/ShareReveal'
 import type { Subject, Topic, SubjectSchedule, StudySession, DayCompletion } from '@/types'
 
 const PALETTE = [
@@ -271,6 +273,7 @@ export default function InicioPage() {
   const [showAdd,       setShowAdd]       = useState(false)
   const [showAddToDay,  setShowAddToDay]  = useState(false)
   const [showResetWeek, setShowResetWeek] = useState(false)
+  const [shareData,     setShareData]     = useState<{ streak: number; totalMinutes: number; subjects: ShareSubjectStat[]; phrase: string } | null>(null)
   const [loading,       setLoading]       = useState(true)
 
   const { open: openModal, close: closeModal } = useModal()
@@ -359,7 +362,7 @@ export default function InicioPage() {
       const today = todayISO()
       const { data: dayTopics } = await supabase
         .from('topics')
-        .select('completed')
+        .select('completed, estimated_minutes, subject_id, subject:subjects(*)')
         .eq('user_id', userId)
         .eq('day_of_week', todayDayOfWeek)
       const allDone = !!dayTopics && dayTopics.length > 0 && dayTopics.every(t => t.completed)
@@ -368,6 +371,30 @@ export default function InicioPage() {
         await supabase
           .from('day_completions')
           .upsert({ user_id: userId, date: today }, { onConflict: 'user_id,date', ignoreDuplicates: true })
+
+        // Day just flipped to complete because of this action (not a re-check
+        // of an already-complete day) — that's the "finish activity" moment.
+        if (done && dayTopics) {
+          const bySubject = new Map<string, ShareSubjectStat>()
+          for (const t of dayTopics as unknown as (Topic & { subject: Subject | null })[]) {
+            if (!t.subject) continue
+            const prev = bySubject.get(t.subject_id)
+            bySubject.set(t.subject_id, {
+              id: t.subject.id,
+              name: t.subject.name,
+              icon: t.subject.icon,
+              color: t.subject.color,
+              minutes: (prev?.minutes ?? 0) + t.estimated_minutes,
+            })
+          }
+          setShareData({
+            streak: calcStreak([...completedDays, today]),
+            totalMinutes: dayTopics.reduce((s, t) => s + t.estimated_minutes, 0),
+            subjects: Array.from(bySubject.values()).sort((a, b) => b.minutes - a.minutes),
+            phrase: randomPhrase(),
+          })
+          openModal()
+        }
       } else {
         await supabase.from('day_completions').delete().eq('user_id', userId).eq('date', today)
       }
@@ -632,6 +659,19 @@ export default function InicioPage() {
             onClose={() => { setShowAddToDay(false); closeModal() }}
             onAdd={addToSchedule}
             onCreateNew={() => { setShowAdd(true); openModal() }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {shareData && (
+          <ShareReveal
+            dateLabel={DAYS_FULL[todayDayOfWeek]}
+            streak={shareData.streak}
+            totalMinutes={shareData.totalMinutes}
+            subjects={shareData.subjects}
+            phrase={shareData.phrase}
+            onClose={() => { setShareData(null); closeModal() }}
           />
         )}
       </AnimatePresence>
