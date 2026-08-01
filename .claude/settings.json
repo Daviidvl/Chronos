@@ -3,7 +3,30 @@
     "allow": [
       "Bash(rm -f \"app/\\(app\\)/estudos/page.tsx\")",
       "Bash(rmdir \"app/\\(app\\)/estudos\")",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(npx --no-install chromium-cli --version)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(timeout 40 npx --yes playwright node \"C:\\\\Users\\\\david\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-david-OneDrive-Documentos-GitHub-Chronos\\\\b4d86bc8-30b4-4b7c-b91b-fab2e99b90b7\\\\scratchpad\\\\shot.mjs\")",
+      "Bash(node \"C:\\\\Users\\\\david\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-david-OneDrive-Documentos-GitHub-Chronos\\\\b4d86bc8-30b4-4b7c-b91b-fab2e99b90b7\\\\scratchpad\\\\shot.mjs\")",
+      "Bash(timeout 60 npx --yes -p playwright node \"C:\\\\Users\\\\david\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-david-OneDrive-Documentos-GitHub-Chronos\\\\b4d86bc8-30b4-4b7c-b91b-fab2e99b90b7\\\\scratchpad\\\\shot.mjs\")",
+      "Bash(timeout 40 node \"C:\\\\Users\\\\david\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-david-OneDrive-Documentos-GitHub-Chronos\\\\b4d86bc8-30b4-4b7c-b91b-fab2e99b90b7\\\\scratchpad\\\\shot.mjs\")",
+      "Bash(cp \"C:\\\\Users\\\\david\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-david-OneDrive-Documentos-GitHub-Chronos\\\\b4d86bc8-30b4-4b7c-b91b-fab2e99b90b7\\\\scratchpad\\\\shot.mjs\" \"c:\\\\Users\\\\david\\\\OneDrive\\\\Documentos\\\\GitHub\\\\Chronos\\\\__shot.mjs\")",
+      "Bash(timeout 40 node __shot.mjs)",
+      "Bash(node -e ' *)",
+      "Bash(lsof -ti:5175 -sTCP:LISTEN)",
+      "Bash(xargs -r kill)",
+      "Bash(timeout 20 bash -c 'until grep -q \"Local:\" /tmp/vite-dev2.log 2>/dev/null; do sleep 1; done')",
+      "Bash(cp \"C:\\\\Users\\\\david\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-david-OneDrive-Documentos-GitHub-Chronos\\\\b4d86bc8-30b4-4b7c-b91b-fab2e99b90b7\\\\scratchpad\\\\shot.mjs\" ./__shot.mjs)",
+      "Bash(sed -i 's#localhost:[0-9]*#localhost:5176#' __shot.mjs)",
+      "Bash(sed -i \"s#text=Dia completo#text=Dia completo#\" __shot.mjs)",
+      "Bash(timeout 40 node __shot3.mjs)",
+      "Bash(lsof -ti:5176 -sTCP:LISTEN)",
+      "Bash(git -C \"c:\\\\Users\\\\david\\\\OneDrive\\\\Documentos\\\\GitHub\\\\Chronos\" mv components/estudos/ShareSheet.tsx components/estudos/ShareReveal.tsx)",
+      "Bash(command -v lsof)",
+      "Bash(command -v netstat)",
+      "Bash(command -v taskkill)",
+      "Bash(netstat -ano)",
+      "Bash(rm -f __mobile-transparent.png)"
     ]
   }
 }

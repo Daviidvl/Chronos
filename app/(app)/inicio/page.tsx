@@ -24,9 +24,11 @@ const DAYS_FULL = [
   'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo',
 ]
 
-// "Reiniciar semana": leftover content is redistributed starting Tuesday,
-// one item per day, wrapping back to Tuesday if there's more than fits.
-const RESET_ORDER = [1, 2, 3, 4, 5, 6, 0]
+// "Reiniciar semana": completed content is deleted, and each day that still
+// has pending content is moved as a whole block to a fresh slot, starting
+// Monday, wrapping back to Monday if there's more pending days than fit in
+// a week.
+const RESET_ORDER = [0, 1, 2, 3, 4, 5, 6]
 
 // ---------- ResetWeekSheet ----------
 function ResetWeekSheet({ count, onConfirm, onClose }: {
@@ -56,8 +58,8 @@ function ResetWeekSheet({ count, onConfirm, onClose }: {
         </div>
 
         <p style={{ fontSize: 14, color: '#6E7787', lineHeight: 1.5, marginBottom: 20 }}>
-          {count} {count === 1 ? 'conteúdo pendente vai ser espalhado' : 'conteúdos pendentes vão ser espalhados'} pelos
-          dias da semana a partir de terça-feira, um por dia. Conteúdos já concluídos não são alterados.
+          {count} {count === 1 ? 'conteúdo pendente vai ser reorganizado' : 'conteúdos pendentes vão ser reorganizados'} a
+          partir de segunda-feira: cada dia com pendências mantém seu conteúdo inteiro junto, só muda de dia. Conteúdos já concluídos serão removidos.
         </p>
 
         <button
@@ -67,6 +69,60 @@ function ResetWeekSheet({ count, onConfirm, onClose }: {
         >
           {saving ? 'Reorganizando…' : 'Reorganizar conteúdo'}
         </button>
+      </motion.div>
+    </>
+  )
+}
+
+// ---------- MoveTopicSheet ----------
+function MoveTopicSheet({ topic, onSelectDay, onClose }: {
+  topic: Topic
+  onSelectDay: (day: number) => Promise<void>
+  onClose: () => void
+}) {
+  const [saving, setSaving] = useState<number | null>(null)
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="sheet-overlay" onClick={onClose}
+      />
+      <motion.div
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 380, damping: 42 }}
+        className="sheet-container sheet-body"
+      >
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
+            Mover conteúdo
+          </span>
+          <button onClick={onClose} className="btn-icon"><X size={16} /></button>
+        </div>
+
+        <p style={{ fontSize: 14, color: '#6E7787', lineHeight: 1.5, marginBottom: 16 }}>
+          {topic.title}
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {DAYS_FULL.map((label, day) => (
+            <button
+              key={day}
+              onClick={async () => { setSaving(day); await onSelectDay(day); setSaving(null) }}
+              disabled={saving !== null || day === topic.day_of_week}
+              className="btn btn-ghost"
+              style={{
+                justifyContent: 'space-between',
+                fontWeight: day === topic.day_of_week ? 700 : 500,
+                color: day === topic.day_of_week ? '#6E5CF6' : '#121826',
+              }}
+            >
+              {label}
+              {day === topic.day_of_week && <span style={{ fontSize: 12 }}>Dia atual</span>}
+            </button>
+          ))}
+        </div>
       </motion.div>
     </>
   )
@@ -273,6 +329,7 @@ export default function InicioPage() {
   const [showAdd,       setShowAdd]       = useState(false)
   const [showAddToDay,  setShowAddToDay]  = useState(false)
   const [showResetWeek, setShowResetWeek] = useState(false)
+  const [movingTopic,   setMovingTopic]   = useState<Topic | null>(null)
   const [shareData,     setShareData]     = useState<{ streak: number; totalMinutes: number; subjects: ShareSubjectStat[]; phrase: string } | null>(null)
   const [loading,       setLoading]       = useState(true)
 
@@ -404,10 +461,13 @@ export default function InicioPage() {
   }
 
   const addTopic = async (subjectId: string, title: string, estimatedMinutes: number) => {
+    const siblingTopics = topics.filter(t => t.subject_id === subjectId && t.day_of_week === activeDay)
+    const position = siblingTopics.length > 0 ? Math.max(...siblingTopics.map(t => t.position)) + 1 : 0
+
     const supabase = createClient()
     const { data } = await supabase
       .from('topics')
-      .insert({ user_id: userId, subject_id: subjectId, title, estimated_minutes: estimatedMinutes, day_of_week: activeDay })
+      .insert({ user_id: userId, subject_id: subjectId, title, estimated_minutes: estimatedMinutes, day_of_week: activeDay, position })
       .select('*, subject:subjects(*)')
       .single()
     if (data) setTopics(ts => [...ts, data as Topic])
@@ -439,22 +499,65 @@ export default function InicioPage() {
   }
 
   const resetWeek = async () => {
-    const pending = topics
-      .filter((t): t is Topic & { day_of_week: number } => !t.completed && t.day_of_week !== null)
-      .slice()
-      .sort((a, b) => a.day_of_week - b.day_of_week || a.created_at.localeCompare(b.created_at))
+    const scheduled = topics.filter((t): t is Topic & { day_of_week: number } => t.day_of_week !== null)
+    const completedIds = scheduled.filter(t => t.completed).map(t => t.id)
+    const pending = scheduled.filter(t => !t.completed)
 
-    const reassigned = pending.map((t, i) => ({ id: t.id, day_of_week: RESET_ORDER[i % RESET_ORDER.length] }))
+    // Days that still have pending content, in week order, each mapped as a
+    // whole block to a fresh slot starting Monday — a day's content always
+    // stays together instead of being split across multiple days.
+    const pendingDays = Array.from(new Set(pending.map(t => t.day_of_week))).sort((a, b) => a - b)
+    const dayMap = new Map(pendingDays.map((day, i) => [day, RESET_ORDER[i % RESET_ORDER.length]]))
+
+    const reassigned = pending.map(t => ({ id: t.id, day_of_week: dayMap.get(t.day_of_week)! }))
 
     const supabase = createClient()
-    await Promise.all(
-      reassigned.map(r => supabase.from('topics').update({ day_of_week: r.day_of_week }).eq('id', r.id))
-    )
+    await Promise.all([
+      completedIds.length > 0 ? supabase.from('topics').delete().in('id', completedIds) : Promise.resolve(),
+      ...reassigned.map(r => supabase.from('topics').update({ day_of_week: r.day_of_week }).eq('id', r.id)),
+    ])
 
+    setTopics(ts => ts
+      .filter(t => !completedIds.includes(t.id))
+      .map(t => {
+        const r = reassigned.find(r => r.id === t.id)
+        return r ? { ...t, day_of_week: r.day_of_week } : t
+      })
+    )
+  }
+
+  // Drag-to-reorder within a subject's list for the active day.
+  const reorderTopics = async (ordered: Topic[]) => {
+    const updates = ordered.map((t, i) => ({ id: t.id, position: i }))
     setTopics(ts => ts.map(t => {
-      const r = reassigned.find(r => r.id === t.id)
-      return r ? { ...t, day_of_week: r.day_of_week } : t
+      const u = updates.find(u => u.id === t.id)
+      return u ? { ...t, position: u.position } : t
     }))
+    const supabase = createClient()
+    await Promise.all(updates.map(u => supabase.from('topics').update({ position: u.position }).eq('id', u.id)))
+  }
+
+  const moveTopicToDay = async (topic: Topic, newDay: number) => {
+    if (newDay === topic.day_of_week) { setMovingTopic(null); return }
+
+    const targetSiblings = topics.filter(t => t.subject_id === topic.subject_id && t.day_of_week === newDay)
+    const newPosition = targetSiblings.length > 0 ? Math.max(...targetSiblings.map(t => t.position)) + 1 : 0
+
+    const supabase = createClient()
+    await supabase.from('topics').update({ day_of_week: newDay, position: newPosition }).eq('id', topic.id)
+    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, day_of_week: newDay, position: newPosition } : t))
+
+    const alreadyScheduled = schedules.some(sc => sc.subject_id === topic.subject_id && sc.day_of_week === newDay)
+    if (!alreadyScheduled) {
+      try {
+        const { data: sc } = await supabase
+          .from('subject_schedules')
+          .upsert({ user_id: userId, subject_id: topic.subject_id, day_of_week: newDay }, { ignoreDuplicates: true })
+          .select().maybeSingle()
+        if (sc) setSchedules(prev => [...prev, sc as SubjectSchedule])
+      } catch { /* table may not exist yet */ }
+    }
+    setMovingTopic(null)
   }
 
   const addToSchedule = async (subjectId: string) => {
@@ -499,9 +602,20 @@ export default function InicioPage() {
   const pendingCount       = topics.filter(t => !t.completed && t.day_of_week !== null).length
   const dayTopics          = topics.filter(t => t.day_of_week === activeDay)
   const scheduledIdsForDay = schedules.filter(sc => sc.day_of_week === activeDay).map(sc => sc.subject_id)
-  const subjectsForDay     = subjects.filter(s =>
-    scheduledIdsForDay.includes(s.id) || dayTopics.some(t => t.subject_id === s.id)
-  )
+  // Order subjects by when their first lesson for this day was created, so the
+  // whole day reads in the same aula sequence it was planned in — not in the
+  // fixed (unrelated) order subjects were originally added to the app.
+  const subjectsForDay     = subjects
+    .filter(s => scheduledIdsForDay.includes(s.id) || dayTopics.some(t => t.subject_id === s.id))
+    .slice()
+    .sort((a, b) => {
+      const aFirst = dayTopics.find(t => t.subject_id === a.id)?.created_at
+      const bFirst = dayTopics.find(t => t.subject_id === b.id)?.created_at
+      if (aFirst && bFirst) return aFirst.localeCompare(bFirst)
+      if (aFirst) return -1
+      if (bFirst) return 1
+      return 0
+    })
 
   return (
     <div className="page">
@@ -600,13 +714,15 @@ export default function InicioPage() {
                     >
                       <SubjectCard
                         subject={subject}
-                        topics={dayTopics.filter(t => t.subject_id === subject.id)}
+                        topics={dayTopics.filter(t => t.subject_id === subject.id).sort((a, b) => a.position - b.position)}
                         sessionMinutes={0}
                         onToggleTopic={toggleTopic}
                         onAddTopic={addTopic}
                         onDeleteTopic={deleteTopic}
                         onDelete={deleteSubject}
                         onRemoveFromDay={() => removeFromDay(subject.id)}
+                        onReorderTopics={reorderTopics}
+                        onMoveTopic={topic => { setMovingTopic(topic); openModal() }}
                       />
                     </motion.div>
                   ))}
@@ -646,6 +762,16 @@ export default function InicioPage() {
             count={pendingCount}
             onConfirm={resetWeek}
             onClose={() => { setShowResetWeek(false); closeModal() }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {movingTopic && (
+          <MoveTopicSheet
+            topic={movingTopic}
+            onSelectDay={day => moveTopicToDay(movingTopic, day)}
+            onClose={() => { setMovingTopic(null); closeModal() }}
           />
         )}
       </AnimatePresence>

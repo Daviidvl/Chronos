@@ -17,6 +17,7 @@ export interface Topic {
   completed: boolean
   completed_at: string | null
   day_of_week: number | null
+  position: number
   created_at: string
   subject?: Subject
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus } from 'lucide-react'
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
+import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus, GripVertical, ArrowRightLeft } from 'lucide-react'
 import type { Subject, Topic } from '@/types'
 import { formatMinutes } from '@/lib/utils'
 
@@ -13,11 +13,14 @@ interface Props {
   onDeleteTopic: (topic: Topic) => void
   onDelete: (id: string) => void
   onRemoveFromDay?: () => void
+  onReorderTopics: (topics: Topic[]) => void
+  onMoveTopic: (topic: Topic) => void
 }
 
 export function SubjectCard({
   subject, topics, sessionMinutes,
   onToggleTopic, onAddTopic, onDeleteTopic, onDelete, onRemoveFromDay,
+  onReorderTopics, onMoveTopic,
 }: Props) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTopic, setAddingTopic] = useState(false)
@@ -131,54 +134,19 @@ export function SubjectCard({
               </div>
             )}
 
-            <AnimatePresence mode="popLayout">
-              {topics.map(topic => (
-                <motion.div
-                  key={topic.id}
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="topic-row"
-                >
-                  <button
-                    onClick={() => onToggleTopic(topic, !topic.completed)}
-                    className={`check${topic.completed ? ' check--done' : ''}`}
-                    style={{ width: 20, height: 20, flexShrink: 0 }}
-                  >
-                    <AnimatePresence>
-                      {topic.completed && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                          transition={{ type: 'spring', stiffness: 550, damping: 28 }}
-                        >
-                          <Check size={10} strokeWidth={3.5} color="#fff" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </button>
-
-                  <span className={`topic-title${topic.completed ? ' topic-title--done' : ''}`}>
-                    {topic.title}
-                  </span>
-
-                  <span className="topic-time">
-                    {formatMinutes(topic.estimated_minutes)}
-                  </span>
-
-                  <button
-                    onClick={e => { e.stopPropagation(); onDeleteTopic(topic) }}
-                    className="btn-icon danger"
-                    title="Apagar conteúdo"
-                    style={{ width: 26, height: 26, flexShrink: 0 }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            <Reorder.Group as="div" axis="y" values={topics} onReorder={onReorderTopics}>
+              <AnimatePresence mode="popLayout">
+                {topics.map(topic => (
+                  <TopicRow
+                    key={topic.id}
+                    topic={topic}
+                    onToggleTopic={onToggleTopic}
+                    onDeleteTopic={onDeleteTopic}
+                    onMoveTopic={onMoveTopic}
+                  />
+                ))}
+              </AnimatePresence>
+            </Reorder.Group>
 
             {/* Add topic form */}
             <AnimatePresence>
@@ -250,5 +218,83 @@ export function SubjectCard({
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+// ---------- TopicRow ----------
+function TopicRow({ topic, onToggleTopic, onDeleteTopic, onMoveTopic }: {
+  topic: Topic
+  onToggleTopic: (topic: Topic, done: boolean) => void
+  onDeleteTopic: (topic: Topic) => void
+  onMoveTopic: (topic: Topic) => void
+}) {
+  const dragControls = useDragControls()
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={topic}
+      dragListener={false}
+      dragControls={dragControls}
+      layout
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, height: 0 }}
+      className="topic-row"
+    >
+      <button
+        onPointerDown={e => dragControls.start(e)}
+        className="btn-icon"
+        title="Arrastar para reordenar"
+        style={{ width: 20, height: 20, flexShrink: 0, cursor: 'grab', touchAction: 'none' }}
+      >
+        <GripVertical size={14} />
+      </button>
+
+      <button
+        onClick={() => onToggleTopic(topic, !topic.completed)}
+        className={`check${topic.completed ? ' check--done' : ''}`}
+        style={{ width: 20, height: 20, flexShrink: 0 }}
+      >
+        <AnimatePresence>
+          {topic.completed && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ type: 'spring', stiffness: 550, damping: 28 }}
+            >
+              <Check size={10} strokeWidth={3.5} color="#fff" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </button>
+
+      <span className={`topic-title${topic.completed ? ' topic-title--done' : ''}`}>
+        {topic.title}
+      </span>
+
+      <span className="topic-time">
+        {formatMinutes(topic.estimated_minutes)}
+      </span>
+
+      <button
+        onClick={e => { e.stopPropagation(); onMoveTopic(topic) }}
+        className="btn-icon"
+        title="Mover para outro dia"
+        style={{ width: 26, height: 26, flexShrink: 0 }}
+      >
+        <ArrowRightLeft size={12} />
+      </button>
+
+      <button
+        onClick={e => { e.stopPropagation(); onDeleteTopic(topic) }}
+        className="btn-icon danger"
+        title="Apagar conteúdo"
+        style={{ width: 26, height: 26, flexShrink: 0 }}
+      >
+        <Trash2 size={12} />
+      </button>
+    </Reorder.Item>
   )
 }
