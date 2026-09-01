@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, RotateCcw } from 'lucide-react'
+import { Plus, X, RotateCcw, Sun, Moon } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useModal } from '@/lib/modal-context'
@@ -11,7 +11,12 @@ import { StudyStats }   from '@/components/estudos/StudyStats'
 import { StudyHeatmap } from '@/components/estudos/StudyHeatmap'
 import { SubjectCard } from '@/components/estudos/SubjectCard'
 import { ShareReveal, type ShareSubjectStat } from '@/components/estudos/ShareReveal'
-import type { Subject, Topic, SubjectSchedule, StudySession, DayCompletion } from '@/types'
+import type { Subject, Topic, TopicPeriod, SubjectSchedule, StudySession, DayCompletion } from '@/types'
+
+const PERIODS: { key: TopicPeriod; label: string; Icon: typeof Sun }[] = [
+  { key: 'manha', label: 'Manhã', Icon: Sun },
+  { key: 'noite', label: 'Noite', Icon: Moon },
+]
 
 const PALETTE = [
   '#6E5CF6', '#2563EB', '#2CC08C', '#F79009',
@@ -128,15 +133,18 @@ function MoveTopicSheet({ topic, onSelectDay, onClose }: {
   )
 }
 
-// ---------- AddSubjectSheet ----------
-function AddSubjectSheet({ userId, onAdd, onClose }: {
+// ---------- SubjectSheet (create or edit) ----------
+function SubjectSheet({ userId, subject, onAdd, onEdit, onClose }: {
   userId: string
+  subject?: Subject
   onAdd: (s: Subject) => void
+  onEdit: (s: Subject) => void
   onClose: () => void
 }) {
-  const [name,   setName]   = useState('')
-  const [color,  setColor]  = useState(PALETTE[0])
-  const [goal,   setGoal]   = useState('60')
+  const isEdit = !!subject
+  const [name,   setName]   = useState(subject?.name ?? '')
+  const [color,  setColor]  = useState(subject?.color ?? PALETTE[0])
+  const [goal,   setGoal]   = useState(String(subject?.daily_goal_minutes ?? 60))
   const [saving, setSaving] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,16 +152,26 @@ function AddSubjectSheet({ userId, onAdd, onClose }: {
     if (!name.trim()) return
     setSaving(true)
     const supabase = createClient()
-    const icon = name.trim().charAt(0).toUpperCase()
-    const { data, error } = await supabase
-      .from('subjects')
-      .insert({ user_id: userId, name: name.trim(), color, icon, daily_goal_minutes: parseInt(goal) || 60 })
-      .select().single()
-    if (!error && data) { onAdd(data as Subject); onClose() }
+
+    if (isEdit) {
+      const { data, error } = await supabase
+        .from('subjects')
+        .update({ name: name.trim(), color, daily_goal_minutes: parseInt(goal) || 60 })
+        .eq('id', subject.id)
+        .select().single()
+      if (!error && data) { onEdit(data as Subject); onClose() }
+    } else {
+      const icon = name.trim().charAt(0).toUpperCase()
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert({ user_id: userId, name: name.trim(), color, icon, daily_goal_minutes: parseInt(goal) || 60 })
+        .select().single()
+      if (!error && data) { onAdd(data as Subject); onClose() }
+    }
     setSaving(false)
   }
 
-  const preview = name.trim().charAt(0).toUpperCase() || 'A'
+  const preview = subject?.icon ?? (name.trim().charAt(0).toUpperCase() || 'A')
 
   return (
     <>
@@ -169,7 +187,7 @@ function AddSubjectSheet({ userId, onAdd, onClose }: {
         <div className="sheet-handle" />
         <div className="sheet-header">
           <span style={{ fontSize: 17, fontWeight: 700, color: '#121826', letterSpacing: '-0.3px' }}>
-            Nova matéria
+            {isEdit ? 'Editar matéria' : 'Nova matéria'}
           </span>
           <button onClick={onClose} className="btn-icon"><X size={16} /></button>
         </div>
@@ -217,7 +235,7 @@ function AddSubjectSheet({ userId, onAdd, onClose }: {
           <button type="submit" disabled={!name.trim() || saving}
             className="btn btn-brand" style={{ background: color }}
           >
-            {saving ? 'A guardar…' : `Adicionar ${name || 'matéria'}`}
+            {saving ? 'A guardar…' : isEdit ? 'Guardar alterações' : `Adicionar ${name || 'matéria'}`}
           </button>
         </form>
       </motion.div>
@@ -330,6 +348,7 @@ export default function InicioPage() {
   const [showAddToDay,  setShowAddToDay]  = useState(false)
   const [showResetWeek, setShowResetWeek] = useState(false)
   const [movingTopic,   setMovingTopic]   = useState<Topic | null>(null)
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
   const [shareData,     setShareData]     = useState<{ streak: number; totalMinutes: number; subjects: ShareSubjectStat[]; phrase: string } | null>(null)
   const [loading,       setLoading]       = useState(true)
 
@@ -460,14 +479,14 @@ export default function InicioPage() {
     await refreshProgress(userId)
   }
 
-  const addTopic = async (subjectId: string, title: string, estimatedMinutes: number) => {
-    const siblingTopics = topics.filter(t => t.subject_id === subjectId && t.day_of_week === activeDay)
+  const addTopic = async (subjectId: string, title: string, estimatedMinutes: number, period: TopicPeriod) => {
+    const siblingTopics = topics.filter(t => t.subject_id === subjectId && t.day_of_week === activeDay && t.period === period)
     const position = siblingTopics.length > 0 ? Math.max(...siblingTopics.map(t => t.position)) + 1 : 0
 
     const supabase = createClient()
     const { data } = await supabase
       .from('topics')
-      .insert({ user_id: userId, subject_id: subjectId, title, estimated_minutes: estimatedMinutes, day_of_week: activeDay, position })
+      .insert({ user_id: userId, subject_id: subjectId, title, estimated_minutes: estimatedMinutes, day_of_week: activeDay, position, period })
       .select('*, subject:subjects(*)')
       .single()
     if (data) setTopics(ts => [...ts, data as Topic])
@@ -496,6 +515,19 @@ export default function InicioPage() {
     const supabase = createClient()
     await supabase.from('topics').delete().eq('id', topic.id)
     setTopics(ts => ts.filter(t => t.id !== topic.id))
+  }
+
+  const togglePeriod = async (topic: Topic) => {
+    const newPeriod: TopicPeriod = topic.period === 'manha' ? 'noite' : 'manha'
+    const supabase = createClient()
+    await supabase.from('topics').update({ period: newPeriod }).eq('id', topic.id)
+    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, period: newPeriod } : t))
+  }
+
+  const renameTopic = async (topic: Topic, title: string) => {
+    const supabase = createClient()
+    await supabase.from('topics').update({ title }).eq('id', topic.id)
+    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, title } : t))
   }
 
   const resetWeek = async () => {
@@ -540,7 +572,7 @@ export default function InicioPage() {
   const moveTopicToDay = async (topic: Topic, newDay: number) => {
     if (newDay === topic.day_of_week) { setMovingTopic(null); return }
 
-    const targetSiblings = topics.filter(t => t.subject_id === topic.subject_id && t.day_of_week === newDay)
+    const targetSiblings = topics.filter(t => t.subject_id === topic.subject_id && t.day_of_week === newDay && t.period === topic.period)
     const newPosition = targetSiblings.length > 0 ? Math.max(...targetSiblings.map(t => t.position)) + 1 : 0
 
     const supabase = createClient()
@@ -569,20 +601,27 @@ export default function InicioPage() {
     if (data) setSchedules(prev => [...prev, data as SubjectSchedule])
   }
 
-  const removeFromDay = async (subjectId: string) => {
+  const removeFromDay = async (subjectId: string, period: TopicPeriod) => {
     const topicIds = topics
-      .filter(t => t.subject_id === subjectId && t.day_of_week === activeDay)
+      .filter(t => t.subject_id === subjectId && t.day_of_week === activeDay && t.period === period)
       .map(t => t.id)
+    const remainingInOtherPeriod = topics.some(
+      t => t.subject_id === subjectId && t.day_of_week === activeDay && t.period !== period
+    )
 
-    setSchedules(prev => prev.filter(sc => !(sc.subject_id === subjectId && sc.day_of_week === activeDay)))
-    setTopics(prev => prev.filter(t => !(t.subject_id === subjectId && t.day_of_week === activeDay)))
+    setTopics(prev => prev.filter(t => !(t.subject_id === subjectId && t.day_of_week === activeDay && t.period === period)))
+    if (!remainingInOtherPeriod) {
+      setSchedules(prev => prev.filter(sc => !(sc.subject_id === subjectId && sc.day_of_week === activeDay)))
+    }
 
     const supabase = createClient()
     await Promise.all([
-      supabase.from('subject_schedules')
-        .delete().eq('user_id', userId).eq('subject_id', subjectId).eq('day_of_week', activeDay),
       topicIds.length > 0
         ? supabase.from('topics').delete().in('id', topicIds)
+        : Promise.resolve(),
+      !remainingInOtherPeriod
+        ? supabase.from('subject_schedules')
+            .delete().eq('user_id', userId).eq('subject_id', subjectId).eq('day_of_week', activeDay)
         : Promise.resolve(),
     ])
   }
@@ -602,20 +641,30 @@ export default function InicioPage() {
   const pendingCount       = topics.filter(t => !t.completed && t.day_of_week !== null).length
   const dayTopics          = topics.filter(t => t.day_of_week === activeDay)
   const scheduledIdsForDay = schedules.filter(sc => sc.day_of_week === activeDay).map(sc => sc.subject_id)
-  // Order subjects by when their first lesson for this day was created, so the
-  // whole day reads in the same aula sequence it was planned in — not in the
+
+  // Order subjects by when their first lesson for this period was created, so
+  // the period reads in the same aula sequence it was planned in — not in the
   // fixed (unrelated) order subjects were originally added to the app.
-  const subjectsForDay     = subjects
-    .filter(s => scheduledIdsForDay.includes(s.id) || dayTopics.some(t => t.subject_id === s.id))
-    .slice()
-    .sort((a, b) => {
-      const aFirst = dayTopics.find(t => t.subject_id === a.id)?.created_at
-      const bFirst = dayTopics.find(t => t.subject_id === b.id)?.created_at
-      if (aFirst && bFirst) return aFirst.localeCompare(bFirst)
-      if (aFirst) return -1
-      if (bFirst) return 1
-      return 0
-    })
+  // A subject scheduled for the day but with no topics yet in either period
+  // shows up in both sections, so "add first content" is reachable from either.
+  const subjectsForPeriod = (period: TopicPeriod) => {
+    const periodTopics = dayTopics.filter(t => t.period === period)
+    const hasAnyTopicToday = (subjectId: string) => dayTopics.some(t => t.subject_id === subjectId)
+    return subjects
+      .filter(s =>
+        periodTopics.some(t => t.subject_id === s.id) ||
+        (scheduledIdsForDay.includes(s.id) && !hasAnyTopicToday(s.id))
+      )
+      .slice()
+      .sort((a, b) => {
+        const aFirst = periodTopics.find(t => t.subject_id === a.id)?.created_at
+        const bFirst = periodTopics.find(t => t.subject_id === b.id)?.created_at
+        if (aFirst && bFirst) return aFirst.localeCompare(bFirst)
+        if (aFirst) return -1
+        if (bFirst) return 1
+        return 0
+      })
+  }
 
   return (
     <div className="page">
@@ -696,36 +745,54 @@ export default function InicioPage() {
               })}
             </div>
 
-            {/* Subject cards */}
+            {/* Subject cards, split into Manhã / Noite */}
             <AnimatePresence mode="popLayout">
-              {subjectsForDay.length > 0 ? (
+              {PERIODS.some(p => subjectsForPeriod(p.key).length > 0) ? (
                 <motion.div
                   key={activeDay}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
                 >
-                  {subjectsForDay.map(subject => (
-                    <motion.div
-                      key={subject.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.97 }}
-                    >
-                      <SubjectCard
-                        subject={subject}
-                        topics={dayTopics.filter(t => t.subject_id === subject.id).sort((a, b) => a.position - b.position)}
-                        sessionMinutes={0}
-                        onToggleTopic={toggleTopic}
-                        onAddTopic={addTopic}
-                        onDeleteTopic={deleteTopic}
-                        onDelete={deleteSubject}
-                        onRemoveFromDay={() => removeFromDay(subject.id)}
-                        onReorderTopics={reorderTopics}
-                        onMoveTopic={topic => { setMovingTopic(topic); openModal() }}
-                      />
-                    </motion.div>
-                  ))}
+                  {PERIODS.map(({ key, label, Icon }) => {
+                    const periodSubjects = subjectsForPeriod(key)
+                    if (periodSubjects.length === 0) return null
+                    return (
+                      <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div className="period-header">
+                          <Icon size={13} />
+                          {label}
+                        </div>
+                        {periodSubjects.map(subject => (
+                          <motion.div
+                            key={subject.id}
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.97 }}
+                          >
+                            <SubjectCard
+                              subject={subject}
+                              period={key}
+                              topics={dayTopics
+                                .filter(t => t.subject_id === subject.id && t.period === key)
+                                .sort((a, b) => a.position - b.position)}
+                              sessionMinutes={0}
+                              onToggleTopic={toggleTopic}
+                              onAddTopic={addTopic}
+                              onDeleteTopic={deleteTopic}
+                              onDelete={deleteSubject}
+                              onRemoveFromDay={() => removeFromDay(subject.id, key)}
+                              onEditSubject={() => { setEditingSubject(subject); openModal() }}
+                              onReorderTopics={reorderTopics}
+                              onMoveTopic={topic => { setMovingTopic(topic); openModal() }}
+                              onTogglePeriod={togglePeriod}
+                              onRenameTopic={renameTopic}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    )
+                  })}
                 </motion.div>
               ) : (
                 <motion.div
@@ -804,9 +871,10 @@ export default function InicioPage() {
 
       <AnimatePresence>
         {showAdd && (
-          <AddSubjectSheet
+          <SubjectSheet
             userId={userId}
             onClose={() => { setShowAdd(false); closeModal() }}
+            onEdit={() => {}}
             onAdd={async s => {
               setSubjects(prev => [...prev, s])
               const supabase = createClient()
@@ -816,6 +884,18 @@ export default function InicioPage() {
                 .select().single()
               if (data) setSchedules(prev => [...prev, data as SubjectSchedule])
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingSubject && (
+          <SubjectSheet
+            userId={userId}
+            subject={editingSubject}
+            onClose={() => { setEditingSubject(null); closeModal() }}
+            onAdd={() => {}}
+            onEdit={s => setSubjects(prev => prev.map(sub => sub.id === s.id ? s : sub))}
           />
         )}
       </AnimatePresence>

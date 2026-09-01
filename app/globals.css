@@ -831,6 +831,19 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   letter-spacing: -0.3px;
 }
 
+/* Manhã/Noite period section header */
+.period-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #9BA5B4;
+  margin: 4px 0 2px;
+}
+
 /* Habit item in Today dashboard */
 .habit-row-today {
   display: flex;
@@ -988,12 +1001,32 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   font-weight: 500;
   color: #121826;
   flex: 1;
+  min-width: 0;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
 }
 
 .topic-title--done {
   text-decoration: line-through;
   opacity: 0.42;
+}
+
+.topic-title-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #121826;
+  line-height: 1.4;
+  border: none;
+  border-bottom: 1.5px solid #6E5CF6;
+  background: transparent;
+  padding: 0 0 1px;
+  outline: none;
 }
 
 .topic-time {

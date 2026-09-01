@@ -1,26 +1,30 @@
 import { useState } from 'react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
-import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus, GripVertical, ArrowRightLeft } from 'lucide-react'
-import type { Subject, Topic } from '@/types'
+import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus, GripVertical, ArrowRightLeft, Pencil, Sun, Moon } from 'lucide-react'
+import type { Subject, Topic, TopicPeriod } from '@/types'
 import { formatMinutes } from '@/lib/utils'
 
 interface Props {
   subject: Subject
   topics: Topic[]
+  period: TopicPeriod
   sessionMinutes: number
   onToggleTopic: (topic: Topic, done: boolean) => void
-  onAddTopic: (subjectId: string, title: string, estimatedMinutes: number) => Promise<void>
+  onAddTopic: (subjectId: string, title: string, estimatedMinutes: number, period: TopicPeriod) => Promise<void>
   onDeleteTopic: (topic: Topic) => void
   onDelete: (id: string) => void
   onRemoveFromDay?: () => void
+  onEditSubject: () => void
   onReorderTopics: (topics: Topic[]) => void
   onMoveTopic: (topic: Topic) => void
+  onTogglePeriod: (topic: Topic) => void
+  onRenameTopic: (topic: Topic, title: string) => void
 }
 
 export function SubjectCard({
-  subject, topics, sessionMinutes,
-  onToggleTopic, onAddTopic, onDeleteTopic, onDelete, onRemoveFromDay,
-  onReorderTopics, onMoveTopic,
+  subject, topics, period, sessionMinutes,
+  onToggleTopic, onAddTopic, onDeleteTopic, onDelete, onRemoveFromDay, onEditSubject,
+  onReorderTopics, onMoveTopic, onTogglePeriod, onRenameTopic,
 }: Props) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTopic, setAddingTopic] = useState(false)
@@ -37,7 +41,7 @@ export function SubjectCard({
     e.preventDefault()
     if (!topicTitle.trim()) return
     setSaving(true)
-    await onAddTopic(subject.id, topicTitle.trim(), parseInt(topicMins) || 30)
+    await onAddTopic(subject.id, topicTitle.trim(), parseInt(topicMins) || 30, period)
     setTopicTitle('')
     setTopicMins('30')
     setAddingTopic(false)
@@ -102,6 +106,15 @@ export function SubjectCard({
         )}
 
         <button
+          onClick={onEditSubject}
+          className="btn-icon"
+          title="Editar matéria"
+          style={{ color: '#9BA5B4' }}
+        >
+          <Pencil size={13} />
+        </button>
+
+        <button
           onClick={() => onDelete(subject.id)}
           className="btn-icon danger"
           title="Eliminar matéria"
@@ -143,6 +156,8 @@ export function SubjectCard({
                     onToggleTopic={onToggleTopic}
                     onDeleteTopic={onDeleteTopic}
                     onMoveTopic={onMoveTopic}
+                    onTogglePeriod={onTogglePeriod}
+                    onRenameTopic={onRenameTopic}
                   />
                 ))}
               </AnimatePresence>
@@ -222,13 +237,24 @@ export function SubjectCard({
 }
 
 // ---------- TopicRow ----------
-function TopicRow({ topic, onToggleTopic, onDeleteTopic, onMoveTopic }: {
+function TopicRow({ topic, onToggleTopic, onDeleteTopic, onMoveTopic, onTogglePeriod, onRenameTopic }: {
   topic: Topic
   onToggleTopic: (topic: Topic, done: boolean) => void
   onDeleteTopic: (topic: Topic) => void
   onMoveTopic: (topic: Topic) => void
+  onTogglePeriod: (topic: Topic) => void
+  onRenameTopic: (topic: Topic, title: string) => void
 }) {
   const dragControls = useDragControls()
+  const [editing, setEditing] = useState(false)
+  const [draftTitle, setDraftTitle] = useState(topic.title)
+
+  const commitRename = () => {
+    const trimmed = draftTitle.trim()
+    if (trimmed && trimmed !== topic.title) onRenameTopic(topic, trimmed)
+    else setDraftTitle(topic.title)
+    setEditing(false)
+  }
 
   return (
     <Reorder.Item
@@ -270,13 +296,41 @@ function TopicRow({ topic, onToggleTopic, onDeleteTopic, onMoveTopic }: {
         </AnimatePresence>
       </button>
 
-      <span className={`topic-title${topic.completed ? ' topic-title--done' : ''}`}>
-        {topic.title}
-      </span>
+      {editing ? (
+        <input
+          autoFocus
+          value={draftTitle}
+          onChange={e => setDraftTitle(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); commitRename() }
+            if (e.key === 'Escape') { setDraftTitle(topic.title); setEditing(false) }
+          }}
+          onClick={e => e.stopPropagation()}
+          className="topic-title-input"
+        />
+      ) : (
+        <span
+          className={`topic-title${topic.completed ? ' topic-title--done' : ''}`}
+          onClick={e => { e.stopPropagation(); setEditing(true) }}
+          title="Clique para renomear"
+        >
+          {topic.title}
+        </span>
+      )}
 
       <span className="topic-time">
         {formatMinutes(topic.estimated_minutes)}
       </span>
+
+      <button
+        onClick={e => { e.stopPropagation(); onTogglePeriod(topic) }}
+        className="btn-icon"
+        title={topic.period === 'manha' ? 'Mover para a noite' : 'Mover para a manhã'}
+        style={{ width: 26, height: 26, flexShrink: 0 }}
+      >
+        {topic.period === 'manha' ? <Sun size={12} /> : <Moon size={12} />}
+      </button>
 
       <button
         onClick={e => { e.stopPropagation(); onMoveTopic(topic) }}

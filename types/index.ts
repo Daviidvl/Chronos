@@ -8,6 +8,8 @@ export interface Subject {
   created_at: string
 }
 
+export type TopicPeriod = 'manha' | 'noite'
+
 export interface Topic {
   id: string
   user_id: string
@@ -18,6 +20,7 @@ export interface Topic {
   completed_at: string | null
   day_of_week: number | null
   position: number
+  period: TopicPeriod
   created_at: string
   subject?: Subject
 }
