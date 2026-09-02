@@ -43,3 +43,10 @@ dist/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase CLI local state
+supabase/.temp/
+
+# AI agent tooling (kept locally, not versioned)
+.agents/
+skills-lock.json

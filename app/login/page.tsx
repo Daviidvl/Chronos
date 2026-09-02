@@ -28,7 +28,7 @@ export default function LoginPage() {
       return
     }
 
-    navigate('/hoje', { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (
