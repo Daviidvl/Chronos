@@ -18,13 +18,14 @@ interface Props {
   onReorderTopics: (topics: Topic[]) => void
   onMoveTopic: (topic: Topic) => void
   onTogglePeriod: (topic: Topic) => void
+  onToggleSubjectPeriod?: () => void
   onRenameTopic: (topic: Topic, title: string) => void
 }
 
 export function SubjectCard({
   subject, topics, period, sessionMinutes,
   onToggleTopic, onAddTopic, onDeleteTopic, onDelete, onRemoveFromDay, onEditSubject,
-  onReorderTopics, onMoveTopic, onTogglePeriod, onRenameTopic,
+  onReorderTopics, onMoveTopic, onTogglePeriod, onToggleSubjectPeriod, onRenameTopic,
 }: Props) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTopic, setAddingTopic] = useState(false)
@@ -85,6 +86,17 @@ export function SubjectCard({
           >
             {pct}%
           </span>
+        )}
+
+        {topics.length === 0 && onToggleSubjectPeriod && (
+          <button
+            onClick={onToggleSubjectPeriod}
+            className="btn-icon"
+            title={period === 'manha' ? 'Mover para a noite' : 'Mover para a manhã'}
+            style={{ color: '#9BA5B4' }}
+          >
+            {period === 'manha' ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
         )}
 
         <button

@@ -39,6 +39,7 @@ export interface SubjectSchedule {
   user_id: string
   subject_id: string
   day_of_week: number
+  period: TopicPeriod
   created_at: string
 }
 

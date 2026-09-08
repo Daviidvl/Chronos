@@ -601,6 +601,18 @@ export default function InicioPage() {
     if (data) setSchedules(prev => [...prev, data as SubjectSchedule])
   }
 
+  // Switches which section (Manhã/Noite) an as-yet-empty subject sits in for
+  // the active day. Only meaningful before it has any conteúdo — once topics
+  // exist, each topic carries its own period and this no longer applies.
+  const toggleSubjectPeriod = async (subjectId: string) => {
+    const sc = schedules.find(s => s.subject_id === subjectId && s.day_of_week === activeDay)
+    if (!sc) return
+    const newPeriod: TopicPeriod = (sc.period ?? 'manha') === 'manha' ? 'noite' : 'manha'
+    const supabase = createClient()
+    await supabase.from('subject_schedules').update({ period: newPeriod }).eq('id', sc.id)
+    setSchedules(prev => prev.map(s => s.id === sc.id ? { ...s, period: newPeriod } : s))
+  }
+
   const removeFromDay = async (subjectId: string, period: TopicPeriod) => {
     const topicIds = topics
       .filter(t => t.subject_id === subjectId && t.day_of_week === activeDay && t.period === period)
@@ -645,16 +657,18 @@ export default function InicioPage() {
   // Order subjects by when their first lesson for this period was created, so
   // the period reads in the same aula sequence it was planned in — not in the
   // fixed (unrelated) order subjects were originally added to the app.
-  // A subject scheduled for the day but with no topics yet in either period
-  // shows up once, under the first period (Manhã), so "add first content" is
-  // reachable without appearing duplicated across both sections.
+  // A subject scheduled for the day but with no topics yet shows up once,
+  // under whichever period its schedule row says (default Manhã) — never in
+  // both — and can be switched via the sun/moon toggle on the empty card.
   const subjectsForPeriod = (period: TopicPeriod) => {
     const periodTopics = dayTopics.filter(t => t.period === period)
     const hasAnyTopicToday = (subjectId: string) => dayTopics.some(t => t.subject_id === subjectId)
+    const scheduledPeriod = (subjectId: string) =>
+      schedules.find(sc => sc.subject_id === subjectId && sc.day_of_week === activeDay)?.period ?? 'manha'
     return subjects
       .filter(s =>
         periodTopics.some(t => t.subject_id === s.id) ||
-        (period === PERIODS[0].key && scheduledIdsForDay.includes(s.id) && !hasAnyTopicToday(s.id))
+        (scheduledIdsForDay.includes(s.id) && !hasAnyTopicToday(s.id) && scheduledPeriod(s.id) === period)
       )
       .slice()
       .sort((a, b) => {
@@ -787,6 +801,7 @@ export default function InicioPage() {
                               onReorderTopics={reorderTopics}
                               onMoveTopic={topic => { setMovingTopic(topic); openModal() }}
                               onTogglePeriod={togglePeriod}
+                              onToggleSubjectPeriod={() => toggleSubjectPeriod(subject.id)}
                               onRenameTopic={renameTopic}
                             />
                           </motion.div>
