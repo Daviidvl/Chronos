@@ -646,14 +646,15 @@ export default function InicioPage() {
   // the period reads in the same aula sequence it was planned in — not in the
   // fixed (unrelated) order subjects were originally added to the app.
   // A subject scheduled for the day but with no topics yet in either period
-  // shows up in both sections, so "add first content" is reachable from either.
+  // shows up once, under the first period (Manhã), so "add first content" is
+  // reachable without appearing duplicated across both sections.
   const subjectsForPeriod = (period: TopicPeriod) => {
     const periodTopics = dayTopics.filter(t => t.period === period)
     const hasAnyTopicToday = (subjectId: string) => dayTopics.some(t => t.subject_id === subjectId)
     return subjects
       .filter(s =>
         periodTopics.some(t => t.subject_id === s.id) ||
-        (scheduledIdsForDay.includes(s.id) && !hasAnyTopicToday(s.id))
+        (period === PERIODS[0].key && scheduledIdsForDay.includes(s.id) && !hasAnyTopicToday(s.id))
       )
       .slice()
       .sort((a, b) => {
