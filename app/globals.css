@@ -137,40 +137,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   box-shadow: var(--sh-sm);
 }
 
-.card-flat {
-  background: #FFFFFF;
-  border-radius: var(--r);
-  border: 1px solid var(--bdr);
-}
-
-/* ═══════════════════════════════════════
-   TYPOGRAPHY SYSTEM
-═══════════════════════════════════════ */
-
-.t-display {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -1px;
-  line-height: 1.12;
-  color: #121826;
-}
-
-.t-heading {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  line-height: 1.25;
-  color: #121826;
-}
-
-.t-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #9BA5B4;
-}
-
 /* ═══════════════════════════════════════
    FORM — INPUT
 ═══════════════════════════════════════ */
@@ -277,33 +243,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
 .btn-icon:hover { background: #F2F4FA; color: #6E7787; }
 .btn-icon.danger:hover { background: rgba(240,68,56,0.08); color: #F04438; }
 
-/* Floating action button */
-.fab {
-  position: fixed;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 16px);
-  right: 20px;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 52px;
-  padding: 0 22px;
-  border-radius: var(--r-sm);
-  background: #6E5CF6;
-  color: #FFFFFF;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  box-shadow: var(--sh-brand);
-  border: none;
-  cursor: pointer;
-  transition: background 0.16s ease, transform 0.1s ease;
-  letter-spacing: -0.01em;
-}
-
-.fab:hover  { background: #5B4AD4; }
-.fab:active { transform: scale(0.97); }
-
 /* ═══════════════════════════════════════
    CHECKBOX
 ═══════════════════════════════════════ */
@@ -377,22 +316,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
 .progress-fill--success { background: #2CC08C; }
 
 /* ═══════════════════════════════════════
-   TASK CARD
-═══════════════════════════════════════ */
-
-.task-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 16px 18px;
-}
-
-.task-title { font-size: 15px; font-weight: 500; color: #121826; line-height: 1.45; }
-.task-title--done { text-decoration: line-through; opacity: 0.48; }
-
-.task-meta { font-size: 12px; color: #9BA5B4; display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-
-/* ═══════════════════════════════════════
    SKELETON LOADER
 ═══════════════════════════════════════ */
 
@@ -458,94 +381,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
 }
 
 /* ═══════════════════════════════════════
-   DIVIDER
-═══════════════════════════════════════ */
-
-.sep {
-  height: 1px;
-  background: var(--bdr);
-}
-
-/* ═══════════════════════════════════════
-   HABIT DOT
-═══════════════════════════════════════ */
-
-.habit-dot {
-  border-radius: 4px;
-  transition: transform 0.15s, opacity 0.15s;
-}
-
-.habit-dot--today {
-  box-shadow: 0 0 0 2px rgba(110,92,246,0.15);
-}
-
-/* ═══════════════════════════════════════
-   WEEK STRIP (semana)
-═══════════════════════════════════════ */
-
-.day-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px 4px;
-  border-radius: var(--r-sm);
-  border: 1.5px solid transparent;
-  transition: all 0.15s ease;
-  cursor: pointer;
-  background: none;
-  font-family: inherit;
-}
-
-.day-btn--active {
-  background: #6E5CF6;
-  box-shadow: var(--sh-brand);
-}
-
-.day-btn--today {
-  background: #FFFFFF;
-  border-color: #6E5CF6;
-  box-shadow: var(--sh-xs);
-}
-
-/* ═══════════════════════════════════════
-   ANIMATIONS
-═══════════════════════════════════════ */
-
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.fade-up { animation: fade-up 0.24s cubic-bezier(0.16,1,0.3,1) both; }
-
-/* ═══════════════════════════════════════
-   EMPTY STATE
-═══════════════════════════════════════ */
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 64px 24px;
-}
-
-.empty-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--r);
-  background: rgba(110,92,246,0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  color: #6E5CF6;
-}
-
-.empty-title { font-size: 15px; font-weight: 600; color: #6E7787; }
-.empty-sub   { font-size: 13px; color: #C2CAD8; margin-top: 4px; }
-
-/* ═══════════════════════════════════════
    COLOR PICKER (configurações)
 ═══════════════════════════════════════ */
 
@@ -565,20 +400,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   transform: scale(1.14);
   outline-offset: 3px;
 }
-
-/* ═══════════════════════════════════════
-   LIST ROWS (configurações)
-═══════════════════════════════════════ */
-
-.list-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--bdr);
-}
-
-.list-row:last-child { border-bottom: none; }
 
 /* ═══════════════════════════════════════
    LOGIN PAGE
@@ -687,37 +508,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
 /* ═══════════════════════════════════════
    DASHBOARD — Today screen
 ═══════════════════════════════════════ */
-
-/* Motivation card */
-.motivation-card {
-  border-radius: var(--r-lg);
-  padding: 28px 24px 24px;
-  background: linear-gradient(145deg, #6E5CF6 0%, #7D6CF8 55%, #9588F9 100%);
-  color: #FFFFFF;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--sh-brand);
-}
-
-.motivation-card::before {
-  content: '';
-  position: absolute;
-  top: -50px; right: -30px;
-  width: 200px; height: 200px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  pointer-events: none;
-}
-
-.motivation-card::after {
-  content: '';
-  position: absolute;
-  bottom: -60px; left: -30px;
-  width: 160px; height: 160px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.05);
-  pointer-events: none;
-}
 
 .motivation-inner { position: relative; z-index: 1; }
 
@@ -844,84 +634,6 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   margin: 4px 0 2px;
 }
 
-/* Habit item in Today dashboard */
-.habit-row-today {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-}
-
-.habit-check-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 2px solid rgba(18,24,38,0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  cursor: pointer;
-  background: none;
-  transition: border-color 0.2s, background 0.2s;
-}
-
-.habit-check-btn:hover     { border-color: var(--habit-color, #6E5CF6); }
-.habit-check-btn--done     { background: var(--habit-color, #2CC08C); border-color: var(--habit-color, #2CC08C); }
-
-.habit-name-today {
-  font-size: 15px;
-  font-weight: 500;
-  color: #121826;
-  line-height: 1.4;
-  transition: opacity 0.25s;
-}
-
-.habit-name-today--done { text-decoration: line-through; opacity: 0.40; }
-
-.habit-time-today { font-size: 12px; color: #9BA5B4; font-weight: 500; margin-top: 2px; }
-
-/* Priority dot */
-.priority-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-/* Big progress card */
-.progress-big {
-  background: #FFFFFF;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--bdr);
-  box-shadow: var(--sh-sm);
-  padding: 24px;
-}
-
-.progress-big-pct {
-  font-size: 44px;
-  font-weight: 800;
-  letter-spacing: -2px;
-  line-height: 1;
-}
-
-.progress-big-track {
-  height: 8px;
-  border-radius: 99px;
-  background: rgba(110,92,246,0.10);
-  overflow: hidden;
-  margin: 16px 0 10px;
-}
-
-.progress-big-fill {
-  height: 100%;
-  border-radius: 99px;
-  background: linear-gradient(to right, #6E5CF6, #9588F9);
-}
-
-.progress-big-fill--done { background: linear-gradient(to right, #2CC08C, #3DD5A0); }
-
 /* ═══════════════════════════════════════
    ESTUDOS — Study screen
 ═══════════════════════════════════════ */
@@ -1033,34 +745,5 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   font-size: 11px;
   color: #C2CAD8;
   font-weight: 500;
-  flex-shrink: 0;
-}
-
-/* Study today card (in Hoje) */
-.study-today-card {
-  background: #FFFFFF;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--bdr);
-  box-shadow: var(--sh-sm);
-  padding: 20px;
-  overflow: hidden;
-}
-
-.study-today-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.study-today-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--r-xs);
-  background: rgba(37,99,235,0.10);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #2563EB;
   flex-shrink: 0;
 }
