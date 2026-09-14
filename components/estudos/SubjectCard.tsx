@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
-import { Check, Plus, Trash2, ChevronDown, ChevronUp, CalendarMinus, GripVertical, ArrowRightLeft, Pencil, Sun, Moon } from 'lucide-react'
+import { Check, X, Plus, Trash2, ChevronDown, ChevronUp, GripVertical, ArrowRightLeft, Pencil, Sun, Moon } from 'lucide-react'
 import type { Subject, Topic, TopicPeriod } from '@/types'
 import { formatMinutes } from '@/lib/utils'
 
@@ -12,20 +12,19 @@ interface Props {
   onToggleTopic: (topic: Topic, done: boolean) => void
   onAddTopic: (subjectId: string, title: string, estimatedMinutes: number, period: TopicPeriod) => Promise<void>
   onDeleteTopic: (topic: Topic) => void
-  onDelete: (id: string) => void
   onRemoveFromDay?: () => void
   onEditSubject: () => void
+  onMoveSubject?: () => void
   onReorderTopics: (topics: Topic[]) => void
-  onMoveTopic: (topic: Topic) => void
   onTogglePeriod: (topic: Topic) => void
   onToggleSubjectPeriod?: () => void
-  onRenameTopic: (topic: Topic, title: string) => void
+  onEditTopic: (topic: Topic, title: string, estimatedMinutes: number) => void
 }
 
 export function SubjectCard({
   subject, topics, period, sessionMinutes,
-  onToggleTopic, onAddTopic, onDeleteTopic, onDelete, onRemoveFromDay, onEditSubject,
-  onReorderTopics, onMoveTopic, onTogglePeriod, onToggleSubjectPeriod, onRenameTopic,
+  onToggleTopic, onAddTopic, onDeleteTopic, onRemoveFromDay, onEditSubject, onMoveSubject,
+  onReorderTopics, onTogglePeriod, onToggleSubjectPeriod, onEditTopic,
 }: Props) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTopic, setAddingTopic] = useState(false)
@@ -106,14 +105,14 @@ export function SubjectCard({
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
 
-        {onRemoveFromDay && (
+        {onMoveSubject && topics.length > 0 && (
           <button
-            onClick={onRemoveFromDay}
+            onClick={onMoveSubject}
             className="btn-icon"
-            title="Remover deste dia"
+            title="Mover conteúdo para outro dia"
             style={{ color: '#9BA5B4' }}
           >
-            <CalendarMinus size={14} />
+            <ArrowRightLeft size={14} />
           </button>
         )}
 
@@ -126,13 +125,15 @@ export function SubjectCard({
           <Pencil size={13} />
         </button>
 
-        <button
-          onClick={() => onDelete(subject.id)}
-          className="btn-icon danger"
-          title="Eliminar matéria"
-        >
-          <Trash2 size={14} />
-        </button>
+        {onRemoveFromDay && (
+          <button
+            onClick={onRemoveFromDay}
+            className="btn-icon danger"
+            title="Remover deste dia"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
 
       {/* Topics */}
@@ -167,9 +168,8 @@ export function SubjectCard({
                     topic={topic}
                     onToggleTopic={onToggleTopic}
                     onDeleteTopic={onDeleteTopic}
-                    onMoveTopic={onMoveTopic}
                     onTogglePeriod={onTogglePeriod}
-                    onRenameTopic={onRenameTopic}
+                    onEditTopic={onEditTopic}
                   />
                 ))}
               </AnimatePresence>
@@ -249,22 +249,36 @@ export function SubjectCard({
 }
 
 // ---------- TopicRow ----------
-function TopicRow({ topic, onToggleTopic, onDeleteTopic, onMoveTopic, onTogglePeriod, onRenameTopic }: {
+function TopicRow({ topic, onToggleTopic, onDeleteTopic, onTogglePeriod, onEditTopic }: {
   topic: Topic
   onToggleTopic: (topic: Topic, done: boolean) => void
   onDeleteTopic: (topic: Topic) => void
-  onMoveTopic: (topic: Topic) => void
   onTogglePeriod: (topic: Topic) => void
-  onRenameTopic: (topic: Topic, title: string) => void
+  onEditTopic: (topic: Topic, title: string, estimatedMinutes: number) => void
 }) {
   const dragControls = useDragControls()
   const [editing, setEditing] = useState(false)
   const [draftTitle, setDraftTitle] = useState(topic.title)
+  const [draftMinutes, setDraftMinutes] = useState(String(topic.estimated_minutes))
 
-  const commitRename = () => {
+  const startEditing = () => {
+    setDraftTitle(topic.title)
+    setDraftMinutes(String(topic.estimated_minutes))
+    setEditing(true)
+  }
+
+  const commitEdit = () => {
     const trimmed = draftTitle.trim()
-    if (trimmed && trimmed !== topic.title) onRenameTopic(topic, trimmed)
-    else setDraftTitle(topic.title)
+    const minutes = parseInt(draftMinutes) || topic.estimated_minutes
+    if (trimmed && (trimmed !== topic.title || minutes !== topic.estimated_minutes)) {
+      onEditTopic(topic, trimmed, minutes)
+    }
+    setEditing(false)
+  }
+
+  const cancelEdit = () => {
+    setDraftTitle(topic.title)
+    setDraftMinutes(String(topic.estimated_minutes))
     setEditing(false)
   }
 
@@ -309,58 +323,88 @@ function TopicRow({ topic, onToggleTopic, onDeleteTopic, onMoveTopic, onTogglePe
       </button>
 
       {editing ? (
-        <input
-          autoFocus
-          value={draftTitle}
-          onChange={e => setDraftTitle(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={e => {
-            if (e.key === 'Enter') { e.preventDefault(); commitRename() }
-            if (e.key === 'Escape') { setDraftTitle(topic.title); setEditing(false) }
-          }}
-          onClick={e => e.stopPropagation()}
-          className="topic-title-input"
-        />
+        <>
+          <input
+            autoFocus
+            value={draftTitle}
+            onChange={e => setDraftTitle(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); commitEdit() }
+              if (e.key === 'Escape') cancelEdit()
+            }}
+            onClick={e => e.stopPropagation()}
+            className="topic-title-input"
+          />
+          <input
+            type="number"
+            min="5"
+            max="480"
+            value={draftMinutes}
+            onChange={e => setDraftMinutes(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); commitEdit() }
+              if (e.key === 'Escape') cancelEdit()
+            }}
+            onClick={e => e.stopPropagation()}
+            className="topic-minutes-input"
+          />
+
+          <button
+            onClick={e => { e.stopPropagation(); commitEdit() }}
+            className="btn-icon"
+            title="Guardar"
+            style={{ width: 26, height: 26, flexShrink: 0, color: '#2CC08C' }}
+          >
+            <Check size={14} />
+          </button>
+
+          <button
+            onClick={e => { e.stopPropagation(); cancelEdit() }}
+            className="btn-icon"
+            title="Cancelar"
+            style={{ width: 26, height: 26, flexShrink: 0 }}
+          >
+            <X size={14} />
+          </button>
+        </>
       ) : (
-        <span
-          className={`topic-title${topic.completed ? ' topic-title--done' : ''}`}
-          onClick={e => { e.stopPropagation(); setEditing(true) }}
-          title="Clique para renomear"
-        >
-          {topic.title}
-        </span>
+        <>
+          <span className={`topic-title${topic.completed ? ' topic-title--done' : ''}`}>
+            {topic.title}
+          </span>
+
+          <span className="topic-time">
+            {formatMinutes(topic.estimated_minutes)}
+          </span>
+
+          <button
+            onClick={e => { e.stopPropagation(); onTogglePeriod(topic) }}
+            className="btn-icon"
+            title={topic.period === 'manha' ? 'Mover para a noite' : 'Mover para a manhã'}
+            style={{ width: 26, height: 26, flexShrink: 0 }}
+          >
+            {topic.period === 'manha' ? <Sun size={12} /> : <Moon size={12} />}
+          </button>
+
+          <button
+            onClick={e => { e.stopPropagation(); startEditing() }}
+            className="btn-icon"
+            title="Editar conteúdo"
+            style={{ width: 26, height: 26, flexShrink: 0, color: '#9BA5B4' }}
+          >
+            <Pencil size={12} />
+          </button>
+
+          <button
+            onClick={e => { e.stopPropagation(); onDeleteTopic(topic) }}
+            className="btn-icon danger"
+            title="Apagar conteúdo"
+            style={{ width: 26, height: 26, flexShrink: 0 }}
+          >
+            <Trash2 size={12} />
+          </button>
+        </>
       )}
-
-      <span className="topic-time">
-        {formatMinutes(topic.estimated_minutes)}
-      </span>
-
-      <button
-        onClick={e => { e.stopPropagation(); onTogglePeriod(topic) }}
-        className="btn-icon"
-        title={topic.period === 'manha' ? 'Mover para a noite' : 'Mover para a manhã'}
-        style={{ width: 26, height: 26, flexShrink: 0 }}
-      >
-        {topic.period === 'manha' ? <Sun size={12} /> : <Moon size={12} />}
-      </button>
-
-      <button
-        onClick={e => { e.stopPropagation(); onMoveTopic(topic) }}
-        className="btn-icon"
-        title="Mover para outro dia"
-        style={{ width: 26, height: 26, flexShrink: 0 }}
-      >
-        <ArrowRightLeft size={12} />
-      </button>
-
-      <button
-        onClick={e => { e.stopPropagation(); onDeleteTopic(topic) }}
-        className="btn-icon danger"
-        title="Apagar conteúdo"
-        style={{ width: 26, height: 26, flexShrink: 0 }}
-      >
-        <Trash2 size={12} />
-      </button>
     </Reorder.Item>
   )
 }

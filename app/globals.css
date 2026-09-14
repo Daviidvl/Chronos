@@ -747,3 +747,19 @@ input, textarea, select { font: inherit; color: #121826; background: none; }
   font-weight: 500;
   flex-shrink: 0;
 }
+
+.topic-minutes-input {
+  width: 48px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #121826;
+  line-height: 1.4;
+  border: none;
+  border-bottom: 1.5px solid #6E5CF6;
+  background: transparent;
+  padding: 0 0 1px;
+  outline: none;
+  text-align: right;
+}

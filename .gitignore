@@ -33,6 +33,9 @@ yarn-error.log*
 # Vite build output (deployed via GitHub Actions to gh-pages)
 dist/
 
+# Next.js dev server residue (can reappear if run accidentally; never used by the Vite build)
+.next/
+
 # vercel
 .vercel
 

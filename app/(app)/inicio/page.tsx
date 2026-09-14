@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, RotateCcw, Sun, Moon } from 'lucide-react'
+import { Plus, X, RotateCcw, Sun, Moon, Trash2, Check } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useModal } from '@/lib/modal-context'
@@ -29,11 +29,10 @@ const DAYS_FULL = [
   'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo',
 ]
 
-// "Reiniciar semana": completed content is deleted, and each day that still
-// has pending content is moved as a whole block to a fresh slot, starting
-// Monday, wrapping back to Monday if there's more pending days than fit in
-// a week.
-const RESET_ORDER = [0, 1, 2, 3, 4, 5, 6]
+// "Reiniciar semana": completed content is deleted so the subject is ready
+// for the new week. Pending content stays exactly where it is — subjects
+// aren't studied on the same days every week, so their schedule (which day
+// each one lives on) is left untouched instead of being shuffled around.
 
 // ---------- ResetWeekSheet ----------
 function ResetWeekSheet({ count, onConfirm, onClose }: {
@@ -63,8 +62,7 @@ function ResetWeekSheet({ count, onConfirm, onClose }: {
         </div>
 
         <p style={{ fontSize: 14, color: '#6E7787', lineHeight: 1.5, marginBottom: 20 }}>
-          {count} {count === 1 ? 'conteúdo pendente vai ser reorganizado' : 'conteúdos pendentes vão ser reorganizados'} a
-          partir de segunda-feira: cada dia com pendências mantém seu conteúdo inteiro junto, só muda de dia. Conteúdos já concluídos serão removidos.
+          {count} {count === 1 ? 'conteúdo concluído vai sair' : 'conteúdos concluídos vão sair'} do plano — a matéria continua no mesmo dia, só o conteúdo já feito é removido. O que ainda está pendente permanece intacto, no mesmo dia de sempre.
         </p>
 
         <button
@@ -79,9 +77,10 @@ function ResetWeekSheet({ count, onConfirm, onClose }: {
   )
 }
 
-// ---------- MoveTopicSheet ----------
-function MoveTopicSheet({ topic, onSelectDay, onClose }: {
-  topic: Topic
+// ---------- MoveSubjectSheet ----------
+function MoveSubjectSheet({ subject, currentDay, onSelectDay, onClose }: {
+  subject: Subject
+  currentDay: number
   onSelectDay: (day: number) => Promise<void>
   onClose: () => void
 }) {
@@ -107,7 +106,7 @@ function MoveTopicSheet({ topic, onSelectDay, onClose }: {
         </div>
 
         <p style={{ fontSize: 14, color: '#6E7787', lineHeight: 1.5, marginBottom: 16 }}>
-          {topic.title}
+          Todo o conteúdo de {subject.name} neste dia vai para o dia escolhido.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -115,16 +114,16 @@ function MoveTopicSheet({ topic, onSelectDay, onClose }: {
             <button
               key={day}
               onClick={async () => { setSaving(day); await onSelectDay(day); setSaving(null) }}
-              disabled={saving !== null || day === topic.day_of_week}
+              disabled={saving !== null || day === currentDay}
               className="btn btn-ghost"
               style={{
                 justifyContent: 'space-between',
-                fontWeight: day === topic.day_of_week ? 700 : 500,
-                color: day === topic.day_of_week ? '#6E5CF6' : '#121826',
+                fontWeight: day === currentDay ? 700 : 500,
+                color: day === currentDay ? '#6E5CF6' : '#121826',
               }}
             >
               {label}
-              {day === topic.day_of_week && <span style={{ fontSize: 12 }}>Dia atual</span>}
+              {day === currentDay && <span style={{ fontSize: 12 }}>Dia atual</span>}
             </button>
           ))}
         </div>
@@ -134,11 +133,12 @@ function MoveTopicSheet({ topic, onSelectDay, onClose }: {
 }
 
 // ---------- SubjectSheet (create or edit) ----------
-function SubjectSheet({ userId, subject, onAdd, onEdit, onClose }: {
+function SubjectSheet({ userId, subject, onAdd, onEdit, onDelete, onClose }: {
   userId: string
   subject?: Subject
   onAdd: (s: Subject) => void
   onEdit: (s: Subject) => void
+  onDelete?: (id: string) => Promise<void>
   onClose: () => void
 }) {
   const isEdit = !!subject
@@ -146,6 +146,16 @@ function SubjectSheet({ userId, subject, onAdd, onEdit, onClose }: {
   const [color,  setColor]  = useState(subject?.color ?? PALETTE[0])
   const [goal,   setGoal]   = useState(String(subject?.daily_goal_minutes ?? 60))
   const [saving, setSaving] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!subject) return
+    setDeleting(true)
+    await onDelete?.(subject.id)
+    setDeleting(false)
+    onClose()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -238,21 +248,80 @@ function SubjectSheet({ userId, subject, onAdd, onEdit, onClose }: {
             {saving ? 'A guardar…' : isEdit ? 'Guardar alterações' : `Adicionar ${name || 'matéria'}`}
           </button>
         </form>
+
+        {isEdit && onDelete && (
+          confirmingDelete ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleting}
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="btn"
+                style={{ flex: 1, background: '#FEE4E2', color: '#F04438' }}
+              >
+                {deleting ? 'A eliminar…' : 'Confirmar eliminação'}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="btn btn-ghost"
+              style={{ marginTop: 12, color: '#F04438', gap: 6 }}
+            >
+              <Trash2 size={14} />
+              Eliminar matéria
+            </button>
+          )
+        )}
       </motion.div>
     </>
   )
 }
 
 // ---------- AddToDaySheet ----------
-function AddToDaySheet({ day, subjects, scheduledIds, onAdd, onCreateNew, onClose }: {
+function AddToDaySheet({ day, subjects, scheduledIds, onAdd, onCreateNew, onDeleteSubject, onClose }: {
   day: number
   subjects: Subject[]
   scheduledIds: string[]
   onAdd: (subjectId: string) => void
   onCreateNew: () => void
+  onDeleteSubject: (id: string) => Promise<void>
   onClose: () => void
 }) {
   const available = subjects.filter(s => !scheduledIds.includes(s.id))
+  const [deleteMode, setDeleteMode]     = useState(false)
+  const [selectedIds, setSelectedIds]   = useState<string[]>([])
+  const [confirming, setConfirming]     = useState(false)
+  const [deleting, setDeleting]         = useState(false)
+
+  const cancelDeleteMode = () => {
+    setDeleteMode(false)
+    setSelectedIds([])
+    setConfirming(false)
+  }
+
+  const toggleSelect = (id: string) => {
+    setConfirming(false)
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const handleDelete = async () => {
+    if (selectedIds.length === 0) return
+    setDeleting(true)
+    await Promise.all(selectedIds.map(id => onDeleteSubject(id)))
+    setDeleting(false)
+    cancelDeleteMode()
+  }
 
   return (
     <>
@@ -274,23 +343,40 @@ function AddToDaySheet({ day, subjects, scheduledIds, onAdd, onCreateNew, onClos
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {available.map(s => (
-            <button key={s.id} onClick={() => { onAdd(s.id); onClose() }} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 14px', borderRadius: 'var(--r)',
-              border: '1.5px solid var(--bdr-2)', background: '#fff',
-              cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, background: s.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
-              }}>
-                {s.icon}
-              </div>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#121826' }}>{s.name}</span>
-            </button>
-          ))}
+          {available.map(s => {
+            const selected = selectedIds.includes(s.id)
+            return (
+              <button
+                key={s.id}
+                onClick={() => { if (deleteMode) toggleSelect(s.id); else { onAdd(s.id); onClose() } }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 14px', borderRadius: 'var(--r)',
+                  border: `1.5px solid ${selected ? '#F04438' : 'var(--bdr-2)'}`,
+                  background: selected ? '#FEF3F2' : '#fff',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                }}
+              >
+                {deleteMode && (
+                  <span
+                    className={`check${selected ? ' check--done' : ''}`}
+                    style={selected ? { background: '#F04438', borderColor: '#F04438' } : undefined}
+                  >
+                    {selected && <Check size={12} strokeWidth={3} color="#fff" />}
+                  </span>
+                )}
+
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, background: s.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 15, fontWeight: 700, color: '#fff', flexShrink: 0,
+                }}>
+                  {s.icon}
+                </div>
+                <span style={{ fontSize: 15, fontWeight: 600, color: '#121826' }}>{s.name}</span>
+              </button>
+            )
+          })}
 
           {available.length === 0 && (
             <p style={{ fontSize: 13, color: '#9BA5B4', textAlign: 'center', padding: '8px 0' }}>
@@ -298,16 +384,59 @@ function AddToDaySheet({ day, subjects, scheduledIds, onAdd, onCreateNew, onClos
             </p>
           )}
 
-          <button onClick={() => { onClose(); onCreateNew() }} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '12px', borderRadius: 'var(--r)',
-            border: '1.5px dashed var(--bdr-2)', background: 'transparent',
-            cursor: 'pointer', fontSize: 14, fontWeight: 600,
-            color: '#6E5CF6', fontFamily: 'inherit', marginTop: 4,
-          }}>
-            <Plus size={14} strokeWidth={2.5} />
-            Criar nova matéria
-          </button>
+          {deleteMode ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button
+                onClick={cancelDeleteMode}
+                disabled={deleting}
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+              >
+                Cancelar
+              </button>
+              {confirming ? (
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="btn"
+                  style={{ flex: 1, background: '#FEE4E2', color: '#F04438' }}
+                >
+                  {deleting ? 'A eliminar…' : 'Confirmar eliminação'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setConfirming(true)}
+                  disabled={selectedIds.length === 0}
+                  className="btn"
+                  style={{ flex: 1, background: '#FEE4E2', color: '#F04438' }}
+                >
+                  Eliminar{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button onClick={() => { onClose(); onCreateNew() }} style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '12px', borderRadius: 'var(--r)',
+                border: '1.5px dashed var(--bdr-2)', background: 'transparent',
+                cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                color: '#6E5CF6', fontFamily: 'inherit',
+              }}>
+                <Plus size={14} strokeWidth={2.5} />
+                Criar nova matéria
+              </button>
+
+              <button onClick={() => setDeleteMode(true)} style={{
+                width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 'var(--r)',
+                border: '1.5px dashed #FEE4E2', background: 'transparent',
+                cursor: 'pointer', color: '#F04438', flexShrink: 0,
+              }} title="Eliminar matéria">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </>
@@ -347,7 +476,7 @@ export default function InicioPage() {
   const [showAdd,       setShowAdd]       = useState(false)
   const [showAddToDay,  setShowAddToDay]  = useState(false)
   const [showResetWeek, setShowResetWeek] = useState(false)
-  const [movingTopic,   setMovingTopic]   = useState<Topic | null>(null)
+  const [movingSubject, setMovingSubject] = useState<{ subject: Subject; period: TopicPeriod } | null>(null)
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
   const [shareData,     setShareData]     = useState<{ streak: number; totalMinutes: number; subjects: ShareSubjectStat[]; phrase: string } | null>(null)
   const [loading,       setLoading]       = useState(true)
@@ -524,38 +653,20 @@ export default function InicioPage() {
     setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, period: newPeriod } : t))
   }
 
-  const renameTopic = async (topic: Topic, title: string) => {
+  const editTopic = async (topic: Topic, title: string, estimatedMinutes: number) => {
     const supabase = createClient()
-    await supabase.from('topics').update({ title }).eq('id', topic.id)
-    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, title } : t))
+    await supabase.from('topics').update({ title, estimated_minutes: estimatedMinutes }).eq('id', topic.id)
+    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, title, estimated_minutes: estimatedMinutes } : t))
   }
 
   const resetWeek = async () => {
-    const scheduled = topics.filter((t): t is Topic & { day_of_week: number } => t.day_of_week !== null)
-    const completedIds = scheduled.filter(t => t.completed).map(t => t.id)
-    const pending = scheduled.filter(t => !t.completed)
-
-    // Days that still have pending content, in week order, each mapped as a
-    // whole block to a fresh slot starting Monday — a day's content always
-    // stays together instead of being split across multiple days.
-    const pendingDays = Array.from(new Set(pending.map(t => t.day_of_week))).sort((a, b) => a - b)
-    const dayMap = new Map(pendingDays.map((day, i) => [day, RESET_ORDER[i % RESET_ORDER.length]]))
-
-    const reassigned = pending.map(t => ({ id: t.id, day_of_week: dayMap.get(t.day_of_week)! }))
+    const completedIds = topics.filter(t => t.completed && t.day_of_week !== null).map(t => t.id)
+    if (completedIds.length === 0) return
 
     const supabase = createClient()
-    await Promise.all([
-      completedIds.length > 0 ? supabase.from('topics').delete().in('id', completedIds) : Promise.resolve(),
-      ...reassigned.map(r => supabase.from('topics').update({ day_of_week: r.day_of_week }).eq('id', r.id)),
-    ])
+    await supabase.from('topics').delete().in('id', completedIds)
 
-    setTopics(ts => ts
-      .filter(t => !completedIds.includes(t.id))
-      .map(t => {
-        const r = reassigned.find(r => r.id === t.id)
-        return r ? { ...t, day_of_week: r.day_of_week } : t
-      })
-    )
+    setTopics(ts => ts.filter(t => !completedIds.includes(t.id)))
   }
 
   // Drag-to-reorder within a subject's list for the active day.
@@ -569,27 +680,38 @@ export default function InicioPage() {
     await Promise.all(updates.map(u => supabase.from('topics').update({ position: u.position }).eq('id', u.id)))
   }
 
-  const moveTopicToDay = async (topic: Topic, newDay: number) => {
-    if (newDay === topic.day_of_week) { setMovingTopic(null); return }
+  const moveSubjectToDay = async (subjectId: string, period: TopicPeriod, newDay: number) => {
+    if (newDay === activeDay) { setMovingSubject(null); return }
 
-    const targetSiblings = topics.filter(t => t.subject_id === topic.subject_id && t.day_of_week === newDay && t.period === topic.period)
-    const newPosition = targetSiblings.length > 0 ? Math.max(...targetSiblings.map(t => t.position)) + 1 : 0
+    const subjectTopics = topics.filter(t => t.subject_id === subjectId && t.day_of_week === activeDay && t.period === period)
+    const targetSiblings = topics.filter(t => t.subject_id === subjectId && t.day_of_week === newDay && t.period === period)
+    let nextPosition = targetSiblings.length > 0 ? Math.max(...targetSiblings.map(t => t.position)) + 1 : 0
+    const updates = subjectTopics.map(t => ({ id: t.id, position: nextPosition++ }))
 
     const supabase = createClient()
-    await supabase.from('topics').update({ day_of_week: newDay, position: newPosition }).eq('id', topic.id)
-    setTopics(ts => ts.map(t => t.id === topic.id ? { ...t, day_of_week: newDay, position: newPosition } : t))
+    await Promise.all(updates.map(u => supabase.from('topics').update({ day_of_week: newDay, position: u.position }).eq('id', u.id)))
+    setTopics(ts => ts.map(t => {
+      const u = updates.find(u => u.id === t.id)
+      return u ? { ...t, day_of_week: newDay, position: u.position } : t
+    }))
 
-    const alreadyScheduled = schedules.some(sc => sc.subject_id === topic.subject_id && sc.day_of_week === newDay)
-    if (!alreadyScheduled) {
+    const remainingInOtherPeriod = topics.some(t => t.subject_id === subjectId && t.day_of_week === activeDay && t.period !== period)
+    if (!remainingInOtherPeriod) {
+      setSchedules(prev => prev.filter(sc => !(sc.subject_id === subjectId && sc.day_of_week === activeDay)))
+      await supabase.from('subject_schedules').delete().eq('user_id', userId).eq('subject_id', subjectId).eq('day_of_week', activeDay)
+    }
+
+    const alreadyScheduledNewDay = schedules.some(sc => sc.subject_id === subjectId && sc.day_of_week === newDay)
+    if (!alreadyScheduledNewDay) {
       try {
         const { data: sc } = await supabase
           .from('subject_schedules')
-          .upsert({ user_id: userId, subject_id: topic.subject_id, day_of_week: newDay }, { ignoreDuplicates: true })
+          .upsert({ user_id: userId, subject_id: subjectId, day_of_week: newDay, period }, { ignoreDuplicates: true })
           .select().maybeSingle()
         if (sc) setSchedules(prev => [...prev, sc as SubjectSchedule])
       } catch { /* table may not exist yet */ }
     }
-    setMovingTopic(null)
+    setMovingSubject(null)
   }
 
   const addToSchedule = async (subjectId: string) => {
@@ -650,7 +772,7 @@ export default function InicioPage() {
     }, {} as Record<string, number>)
   ).map(([date, minutes]) => ({ date, minutes }))
 
-  const pendingCount       = topics.filter(t => !t.completed && t.day_of_week !== null).length
+  const completedCount     = topics.filter(t => t.completed && t.day_of_week !== null).length
   const dayTopics          = topics.filter(t => t.day_of_week === activeDay)
   const scheduledIdsForDay = schedules.filter(sc => sc.day_of_week === activeDay).map(sc => sc.subject_id)
 
@@ -706,11 +828,11 @@ export default function InicioPage() {
             <div className="section-header" style={{ flexWrap: 'wrap', rowGap: 8 }}>
               <h2 className="section-title">Plano de estudos</h2>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-                {pendingCount > 0 && (
+                {completedCount > 0 && (
                   <button
                     onClick={() => { setShowResetWeek(true); openModal() }}
                     className="btn btn-ghost"
-                    title="Reorganizar conteúdo não estudado"
+                    title="Remover conteúdo já concluído"
                     style={{ width: 'auto', minHeight: 36, padding: '0 12px', fontSize: 13 }}
                   >
                     <RotateCcw size={13} strokeWidth={2.5} />
@@ -795,14 +917,13 @@ export default function InicioPage() {
                               onToggleTopic={toggleTopic}
                               onAddTopic={addTopic}
                               onDeleteTopic={deleteTopic}
-                              onDelete={deleteSubject}
                               onRemoveFromDay={() => removeFromDay(subject.id, key)}
                               onEditSubject={() => { setEditingSubject(subject); openModal() }}
+                              onMoveSubject={() => { setMovingSubject({ subject, period: key }); openModal() }}
                               onReorderTopics={reorderTopics}
-                              onMoveTopic={topic => { setMovingTopic(topic); openModal() }}
                               onTogglePeriod={togglePeriod}
                               onToggleSubjectPeriod={() => toggleSubjectPeriod(subject.id)}
-                              onRenameTopic={renameTopic}
+                              onEditTopic={editTopic}
                             />
                           </motion.div>
                         ))}
@@ -842,7 +963,7 @@ export default function InicioPage() {
       <AnimatePresence>
         {showResetWeek && (
           <ResetWeekSheet
-            count={pendingCount}
+            count={completedCount}
             onConfirm={resetWeek}
             onClose={() => { setShowResetWeek(false); closeModal() }}
           />
@@ -850,11 +971,12 @@ export default function InicioPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {movingTopic && (
-          <MoveTopicSheet
-            topic={movingTopic}
-            onSelectDay={day => moveTopicToDay(movingTopic, day)}
-            onClose={() => { setMovingTopic(null); closeModal() }}
+        {movingSubject && (
+          <MoveSubjectSheet
+            subject={movingSubject.subject}
+            currentDay={activeDay}
+            onSelectDay={day => moveSubjectToDay(movingSubject.subject.id, movingSubject.period, day)}
+            onClose={() => { setMovingSubject(null); closeModal() }}
           />
         )}
       </AnimatePresence>
@@ -868,6 +990,7 @@ export default function InicioPage() {
             onClose={() => { setShowAddToDay(false); closeModal() }}
             onAdd={addToSchedule}
             onCreateNew={() => { setShowAdd(true); openModal() }}
+            onDeleteSubject={deleteSubject}
           />
         )}
       </AnimatePresence>
@@ -912,6 +1035,7 @@ export default function InicioPage() {
             onClose={() => { setEditingSubject(null); closeModal() }}
             onAdd={() => {}}
             onEdit={s => setSubjects(prev => prev.map(sub => sub.id === s.id ? s : sub))}
+            onDelete={deleteSubject}
           />
         )}
       </AnimatePresence>
